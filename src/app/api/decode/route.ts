@@ -27,24 +27,34 @@ export async function POST(req: NextRequest) {
 
 Return ONLY valid JSON, no markdown fences or extra text.`;
 
-  try {
-    const message = await client.messages.create({
-      model: "claude-sonnet-4-20250514",
-      max_tokens: 1024,
-      system: systemPrompt,
-      messages: [{ role: "user", content: signal }],
-    });
+  const maxAttempts = 3;
 
-    const text =
-      message.content[0].type === "text" ? message.content[0].text : "";
-    const parsed = JSON.parse(text);
+  for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+    try {
+      const message = await client.messages.create({
+        model: "claude-sonnet-4-20250514",
+        max_tokens: 1024,
+        system: systemPrompt,
+        messages: [{ role: "user", content: signal }],
+      });
 
-    return NextResponse.json(parsed);
-  } catch (e) {
-    console.error("Decode error:", e);
-    return NextResponse.json(
-      { error: "Failed to decode signal. Please try again." },
-      { status: 500 }
-    );
+      const text =
+        message.content[0].type === "text" ? message.content[0].text : "";
+      const parsed = JSON.parse(text);
+
+      return NextResponse.json(parsed);
+    } catch (e) {
+      console.error(`Decode error (attempt ${attempt}/${maxAttempts}):`, e);
+
+      if (attempt === maxAttempts) {
+        return NextResponse.json(
+          { error: "Failed to decode signal. Please try again." },
+          { status: 500 }
+        );
+      }
+
+      // Wait before retrying (500ms, then 1000ms)
+      await new Promise((resolve) => setTimeout(resolve, attempt * 500));
+    }
   }
 }
