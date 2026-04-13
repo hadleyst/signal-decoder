@@ -1,6 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect, useCallback } from "react";
+import { useAuth } from "@/components/AuthProvider";
+import AuthModal from "@/components/AuthModal";
+import Paywall from "@/components/Paywall";
+import { getUsageCount, incrementUsage, hasReachedLimit, FREE_LIMIT } from "@/lib/usage";
 
 interface GlossaryItem {
   term: string;
@@ -84,22 +88,66 @@ function LoadingState() {
 }
 
 export default function Home() {
+  const { session, isSubscribed, loading: authLoading, signOut, refreshSubscription } = useAuth();
   const [signal, setSignal] = useState("");
   const [result, setResult] = useState<DecodeResult | null>(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [usageCount, setUsageCount] = useState(0);
+  const [showPaywall, setShowPaywall] = useState(false);
+  const [showAuthModal, setShowAuthModal] = useState(false);
+  const [authModalTab, setAuthModalTab] = useState<"signin" | "signup">("signin");
+  const [checkoutSuccess, setCheckoutSuccess] = useState(false);
+
+  // Hydrate usage count from localStorage
+  useEffect(() => {
+    setUsageCount(getUsageCount());
+  }, []);
+
+  // Handle checkout success redirect
+  const handleCheckoutReturn = useCallback(async () => {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get("checkout") === "success") {
+      setCheckoutSuccess(true);
+      window.history.replaceState({}, "", "/");
+      // Poll for subscription activation (webhook may be slightly delayed)
+      for (let i = 0; i < 5; i++) {
+        await refreshSubscription();
+        await new Promise((r) => setTimeout(r, 1500));
+      }
+      setCheckoutSuccess(false);
+    }
+  }, [refreshSubscription]);
+
+  useEffect(() => {
+    handleCheckoutReturn();
+  }, [handleCheckoutReturn]);
 
   async function handleDecode() {
     if (!signal.trim()) return;
 
+    // Check if user can decode
+    if (!isSubscribed && hasReachedLimit()) {
+      setShowPaywall(true);
+      return;
+    }
+
     setLoading(true);
     setError("");
     setResult(null);
+    setShowPaywall(false);
 
     try {
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (session) {
+        headers["Authorization"] = `Bearer ${session.access_token}`;
+      }
+
       const res = await fetch("/api/decode", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({ signal: signal.trim() }),
       });
 
@@ -110,6 +158,12 @@ export default function Home() {
 
       const data = await res.json();
       setResult(data);
+
+      // Increment usage for non-subscribers
+      if (!isSubscribed) {
+        const newCount = incrementUsage();
+        setUsageCount(newCount);
+      }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong");
     } finally {
@@ -119,10 +173,33 @@ export default function Home() {
 
   const sentiment = result ? sentimentConfig[result.sentiment] : null;
   const risk = result ? riskConfig[result.riskLevel] : null;
+  const showUsageCounter = !isSubscribed && !authLoading;
 
   return (
     <div className="relative z-10 flex flex-col min-h-full">
-      <main className="flex-1 w-full max-w-2xl mx-auto px-4 py-16">
+      {/* Auth bar */}
+      <div className="w-full max-w-2xl mx-auto px-4 pt-4 flex justify-end">
+        {authLoading ? null : session ? (
+          <div className="flex items-center gap-3">
+            <span className="text-xs text-gray-500 truncate max-w-[180px]">{session.user.email}</span>
+            <button
+              onClick={signOut}
+              className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
+            >
+              Sign out
+            </button>
+          </div>
+        ) : (
+          <button
+            onClick={() => { setAuthModalTab("signin"); setShowAuthModal(true); }}
+            className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
+          >
+            Sign in
+          </button>
+        )}
+      </div>
+
+      <main className="flex-1 w-full max-w-2xl mx-auto px-4 py-12">
         {/* Header */}
         <header className="header-glow mb-12 text-center">
           <Logo />
@@ -130,6 +207,13 @@ export default function Home() {
             Paste a crypto signal or tweet and get a plain English breakdown.
           </p>
         </header>
+
+        {/* Checkout success banner */}
+        {checkoutSuccess && (
+          <div className="mb-6 rounded-xl border border-emerald-500/20 bg-emerald-500/5 px-4 py-3 text-sm text-emerald-400 text-center">
+            Payment successful! Activating your subscription...
+          </div>
+        )}
 
         {/* Input */}
         <div className="space-y-3">
@@ -163,9 +247,16 @@ export default function Home() {
             ) : "Decode Signal"}
           </button>
 
-          <p className="text-xs text-gray-600 text-center">
-            Press <kbd className="px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-gray-400 font-mono text-[10px]">{"\u2318"}Enter</kbd> to submit
-          </p>
+          <div className="flex items-center justify-between">
+            <p className="text-xs text-gray-600">
+              Press <kbd className="px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-gray-400 font-mono text-[10px]">{"\u2318"}Enter</kbd> to submit
+            </p>
+            {showUsageCounter && (
+              <p className="text-xs text-gray-600">
+                {usageCount} of {FREE_LIMIT} free decodes used
+              </p>
+            )}
+          </div>
         </div>
 
         {/* Error */}
@@ -173,6 +264,14 @@ export default function Home() {
           <div className="mt-6 rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-3 text-sm text-red-400">
             {error}
           </div>
+        )}
+
+        {/* Paywall */}
+        {showPaywall && (
+          <Paywall
+            onSignIn={() => { setAuthModalTab("signin"); setShowAuthModal(true); }}
+            onSignUp={() => { setAuthModalTab("signup"); setShowAuthModal(true); }}
+          />
         )}
 
         {/* Loading */}
@@ -268,6 +367,13 @@ export default function Home() {
           For educational purposes only. Not financial advice.
         </p>
       </footer>
+
+      {/* Auth Modal */}
+      <AuthModal
+        isOpen={showAuthModal}
+        onClose={() => setShowAuthModal(false)}
+        defaultTab={authModalTab}
+      />
     </div>
   );
 }

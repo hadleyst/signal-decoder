@@ -1,9 +1,35 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
+import { createServiceClient } from "@/lib/supabase";
 
 const client = new Anthropic();
 
 export async function POST(req: NextRequest) {
+  // For authenticated users, verify they have an active subscription
+  const token = req.headers.get("authorization")?.replace("Bearer ", "");
+  if (token) {
+    const supabase = createServiceClient();
+    const { data: { user } } = await supabase.auth.getUser(token);
+
+    if (user) {
+      const { data } = await supabase
+        .from("subscriptions")
+        .select("status, current_period_end")
+        .eq("user_id", user.id)
+        .single();
+
+      const isSubscribed = data?.status === "active" &&
+        new Date(data.current_period_end) > new Date();
+
+      if (!isSubscribed) {
+        return NextResponse.json(
+          { error: "Active subscription required" },
+          { status: 403 }
+        );
+      }
+    }
+  }
+
   const { signal } = await req.json();
 
   if (!signal || typeof signal !== "string" || signal.trim().length === 0) {

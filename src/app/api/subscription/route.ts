@@ -1,0 +1,27 @@
+import { NextRequest, NextResponse } from "next/server";
+import { createServiceClient } from "@/lib/supabase";
+
+export async function GET(req: NextRequest) {
+  const token = req.headers.get("authorization")?.replace("Bearer ", "");
+  if (!token) {
+    return NextResponse.json({ isSubscribed: false });
+  }
+
+  const supabase = createServiceClient();
+  const { data: { user }, error: authError } = await supabase.auth.getUser(token);
+
+  if (authError || !user) {
+    return NextResponse.json({ isSubscribed: false });
+  }
+
+  const { data } = await supabase
+    .from("subscriptions")
+    .select("status, current_period_end")
+    .eq("user_id", user.id)
+    .single();
+
+  const isSubscribed = data?.status === "active" &&
+    new Date(data.current_period_end) > new Date();
+
+  return NextResponse.json({ isSubscribed });
+}
