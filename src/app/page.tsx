@@ -47,6 +47,9 @@ export default function LandingPage() {
       <nav className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-5 flex items-center justify-between">
         <Logo />
         <div className="flex items-center gap-4">
+          <Link href="/feed" className="text-sm text-gray-400 hover:text-white transition-colors">
+            Feed
+          </Link>
           <Link href="/app" className="text-sm text-gray-400 hover:text-white transition-colors">
             Sign in
           </Link>
@@ -282,6 +285,10 @@ export default function LandingPage() {
             For educational purposes only. Not financial advice.
           </p>
           <nav className="flex items-center gap-4 text-xs text-gray-500">
+            <Link href="/feed" className="hover:text-cyan-400 transition-colors">
+              Feed
+            </Link>
+            <span className="w-1 h-1 rounded-full bg-gray-700" />
             <Link href="/glossary" className="hover:text-cyan-400 transition-colors">
               Glossary
             </Link>

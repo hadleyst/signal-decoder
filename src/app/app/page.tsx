@@ -312,6 +312,12 @@ export default function Home() {
                 >
                   Refer
                 </Link>
+                <Link
+                  href="/settings"
+                  className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
+                >
+                  Settings
+                </Link>
               </>
             )}
             <span className="text-xs text-gray-500 truncate max-w-[180px]">{session.user.email}</span>

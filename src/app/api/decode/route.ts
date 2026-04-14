@@ -180,6 +180,14 @@ async function saveHistory(
     }
   }
 
+  // Read user's public-share preference
+  const { data: settings } = await supabase
+    .from("user_settings")
+    .select("share_publicly")
+    .eq("user_id", userId)
+    .single();
+  const isPublic = settings?.share_publicly ?? false;
+
   const { error: insertError } = await supabase.from("decode_history").insert({
     user_id: userId,
     signal_text: payload.signalText,
@@ -189,6 +197,7 @@ async function saveHistory(
     risk: payload.result.riskLevel,
     timeframe: payload.result.timeframe,
     glossary: payload.result.glossary,
+    is_public: isPublic,
   });
 
   if (insertError) {
