@@ -5,6 +5,7 @@ import { useAuth } from "@/components/AuthProvider";
 import AuthModal from "@/components/AuthModal";
 import Paywall from "@/components/Paywall";
 import { getUsageCount, incrementUsage, hasReachedLimit, FREE_LIMIT } from "@/lib/usage";
+import { generateShareImage, downloadBlob } from "@/lib/shareImage";
 
 interface GlossaryItem {
   term: string;
@@ -106,6 +107,7 @@ export default function Home() {
   const [imagePreview, setImagePreview] = useState<string | null>(null);
   const [resultImagePreview, setResultImagePreview] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
+  const [shareLoading, setShareLoading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Hydrate usage count from localStorage
@@ -151,6 +153,20 @@ export default function Home() {
       setImageMediaType(file.type);
     };
     reader.readAsDataURL(file);
+  }
+
+  async function handleShare() {
+    if (!result) return;
+    setShareLoading(true);
+    try {
+      const blob = await generateShareImage(result);
+      const timestamp = new Date().toISOString().split("T")[0];
+      downloadBlob(blob, `signaldecoder-${timestamp}.png`);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : "Failed to generate image");
+    } finally {
+      setShareLoading(false);
+    }
   }
 
   function clearImage() {
@@ -501,6 +517,32 @@ export default function Home() {
                 </div>
               </section>
             )}
+
+            {/* Share button */}
+            <div className="flex justify-center pt-2 animate-fade-up animate-fade-up-delay-3">
+              <button
+                onClick={handleShare}
+                disabled={shareLoading}
+                className="flex items-center gap-2 rounded-xl border border-white/10 bg-white/5 px-5 py-2.5 text-sm font-medium text-gray-300 hover:bg-white/10 hover:text-white transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {shareLoading ? (
+                  <>
+                    <svg className="animate-spin h-4 w-4" viewBox="0 0 24 24" fill="none">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                    </svg>
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.185 2.25 2.25 0 0 0-3.933 2.185Z" />
+                    </svg>
+                    Share as image
+                  </>
+                )}
+              </button>
+            </div>
           </div>
         )}
       </main>
