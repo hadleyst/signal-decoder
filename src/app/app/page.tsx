@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { useAuth } from "@/components/AuthProvider";
 import AuthModal from "@/components/AuthModal";
 import Paywall from "@/components/Paywall";
@@ -87,6 +87,8 @@ function LoadingState() {
   );
 }
 
+const MAX_IMAGE_BYTES = 5 * 1024 * 1024;
+
 export default function Home() {
   const { session, isSubscribed, loading: authLoading, signOut, refreshSubscription } = useAuth();
   const [signal, setSignal] = useState("");
@@ -98,6 +100,13 @@ export default function Home() {
   const [showAuthModal, setShowAuthModal] = useState(false);
   const [authModalTab, setAuthModalTab] = useState<"signin" | "signup">("signin");
   const [checkoutSuccess, setCheckoutSuccess] = useState(false);
+  const [mode, setMode] = useState<"text" | "image">("text");
+  const [imageData, setImageData] = useState<string | null>(null);
+  const [imageMediaType, setImageMediaType] = useState<string | null>(null);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [resultImagePreview, setResultImagePreview] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Hydrate usage count from localStorage
   useEffect(() => {
@@ -123,8 +132,38 @@ export default function Home() {
     handleCheckoutReturn();
   }, [handleCheckoutReturn]);
 
+  function handleFile(file: File) {
+    setError("");
+    if (file.type !== "image/jpeg" && file.type !== "image/png") {
+      setError("Only JPG and PNG images are supported");
+      return;
+    }
+    if (file.size > MAX_IMAGE_BYTES) {
+      setError("Image too large (max 5MB)");
+      return;
+    }
+    const reader = new FileReader();
+    reader.onload = () => {
+      const dataUrl = reader.result as string;
+      const base64 = dataUrl.split(",")[1];
+      setImagePreview(dataUrl);
+      setImageData(base64);
+      setImageMediaType(file.type);
+    };
+    reader.readAsDataURL(file);
+  }
+
+  function clearImage() {
+    setImageData(null);
+    setImageMediaType(null);
+    setImagePreview(null);
+    if (fileInputRef.current) fileInputRef.current.value = "";
+  }
+
   async function handleDecode() {
-    if (!signal.trim()) return;
+    const hasText = mode === "text" && signal.trim().length > 0;
+    const hasImage = mode === "image" && imageData !== null;
+    if (!hasText && !hasImage) return;
 
     // Check if user can decode
     if (!isSubscribed && hasReachedLimit()) {
@@ -135,6 +174,7 @@ export default function Home() {
     setLoading(true);
     setError("");
     setResult(null);
+    setResultImagePreview(null);
     setShowPaywall(false);
 
     try {
@@ -145,10 +185,14 @@ export default function Home() {
         headers["Authorization"] = `Bearer ${session.access_token}`;
       }
 
+      const body = hasImage
+        ? { image: imageData, mediaType: imageMediaType }
+        : { signal: signal.trim() };
+
       const res = await fetch("/api/decode", {
         method: "POST",
         headers,
-        body: JSON.stringify({ signal: signal.trim() }),
+        body: JSON.stringify(body),
       });
 
       if (!res.ok) {
@@ -158,6 +202,9 @@ export default function Home() {
 
       const data = await res.json();
       setResult(data);
+      if (hasImage) {
+        setResultImagePreview(imagePreview);
+      }
 
       // Increment usage for non-subscribers
       if (!isSubscribed) {
@@ -217,23 +264,99 @@ export default function Home() {
 
         {/* Input */}
         <div className="space-y-3">
-          <div className="card p-1">
-            <textarea
-              value={signal}
-              onChange={(e) => setSignal(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleDecode();
-              }}
-              placeholder='Paste a signal... e.g. "BTC breaking out of the descending wedge on the 4H, RSI divergence confirmed. Targeting 72k, SL at 64.5k. 3x long."'
-              rows={4}
-              maxLength={2000}
-              className="w-full bg-transparent px-4 py-3 text-sm text-gray-200 placeholder-gray-600 focus:outline-none resize-none font-mono"
-            />
+          {/* Mode tabs */}
+          <div className="flex gap-1 bg-white/5 rounded-lg p-1 w-fit">
+            <button
+              onClick={() => setMode("text")}
+              className={`px-4 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                mode === "text" ? "bg-white/10 text-white" : "text-gray-500 hover:text-gray-300"
+              }`}
+            >
+              Text
+            </button>
+            <button
+              onClick={() => setMode("image")}
+              className={`px-4 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                mode === "image" ? "bg-white/10 text-white" : "text-gray-500 hover:text-gray-300"
+              }`}
+            >
+              Image
+            </button>
           </div>
+
+          {mode === "text" ? (
+            <div className="card p-1">
+              <textarea
+                value={signal}
+                onChange={(e) => setSignal(e.target.value)}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter" && (e.metaKey || e.ctrlKey)) handleDecode();
+                }}
+                placeholder='Paste a signal... e.g. "BTC breaking out of the descending wedge on the 4H, RSI divergence confirmed. Targeting 72k, SL at 64.5k. 3x long."'
+                rows={4}
+                maxLength={2000}
+                className="w-full bg-transparent px-4 py-3 text-sm text-gray-200 placeholder-gray-600 focus:outline-none resize-none font-mono"
+              />
+            </div>
+          ) : (
+            <div
+              onDragOver={(e) => { e.preventDefault(); setDragOver(true); }}
+              onDragLeave={() => setDragOver(false)}
+              onDrop={(e) => {
+                e.preventDefault();
+                setDragOver(false);
+                const file = e.dataTransfer.files[0];
+                if (file) handleFile(file);
+              }}
+              className={`card p-4 transition-colors ${dragOver ? "border-cyan-500/50 bg-cyan-500/5" : ""}`}
+            >
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/png"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) handleFile(file);
+                }}
+                className="hidden"
+              />
+              {imagePreview ? (
+                <div className="relative">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img
+                    src={imagePreview}
+                    alt="Uploaded signal"
+                    className="w-full rounded-lg max-h-80 object-contain bg-black/30"
+                  />
+                  <button
+                    onClick={clearImage}
+                    className="absolute top-2 right-2 w-7 h-7 rounded-full bg-black/70 border border-white/10 flex items-center justify-center text-gray-300 hover:text-white hover:bg-black/90 transition-colors"
+                    aria-label="Remove image"
+                  >
+                    <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                  </button>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="w-full py-10 flex flex-col items-center justify-center gap-2 text-gray-500 hover:text-gray-300 transition-colors"
+                >
+                  <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+                  </svg>
+                  <p className="text-sm font-medium">Click to upload or drag and drop</p>
+                  <p className="text-xs text-gray-600">JPG or PNG (max 5MB)</p>
+                </button>
+              )}
+            </div>
+          )}
 
           <button
             onClick={handleDecode}
-            disabled={loading || !signal.trim()}
+            disabled={loading || (mode === "text" ? !signal.trim() : !imageData)}
             className="w-full rounded-xl bg-gradient-to-r from-cyan-600 to-cyan-500 px-4 py-3 text-sm font-semibold text-white hover:from-cyan-500 hover:to-cyan-400 disabled:opacity-30 disabled:cursor-not-allowed transition-all duration-200 shadow-lg shadow-cyan-500/20 hover:shadow-cyan-500/30 active:scale-[0.98]"
           >
             {loading ? (
@@ -248,9 +371,11 @@ export default function Home() {
           </button>
 
           <div className="flex items-center justify-between">
-            <p className="text-xs text-gray-600">
-              Press <kbd className="px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-gray-400 font-mono text-[10px]">{"\u2318"}Enter</kbd> to submit
-            </p>
+            {mode === "text" ? (
+              <p className="text-xs text-gray-600">
+                Press <kbd className="px-1.5 py-0.5 rounded bg-white/5 border border-white/10 text-gray-400 font-mono text-[10px]">{"\u2318"}Enter</kbd> to submit
+              </p>
+            ) : <span />}
             {showUsageCounter && (
               <p className="text-xs text-gray-600">
                 {usageCount} of {FREE_LIMIT} free decodes used
@@ -280,6 +405,24 @@ export default function Home() {
         {/* Results */}
         {result && (
           <div className="mt-8 space-y-4">
+            {/* Image preview (only when result was from an image) */}
+            {resultImagePreview && (
+              <section className="card p-3 animate-fade-up">
+                <div className="flex items-center gap-2 mb-3 px-2 pt-1">
+                  <div className="w-1 h-4 rounded-full bg-cyan-400" />
+                  <h2 className="text-xs font-semibold uppercase tracking-wider text-gray-500">
+                    Source Image
+                  </h2>
+                </div>
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={resultImagePreview}
+                  alt="Analyzed signal"
+                  className="w-full rounded-lg max-h-96 object-contain bg-black/30"
+                />
+              </section>
+            )}
+
             {/* Explanation */}
             <section className="card p-5 animate-fade-up">
               <div className="flex items-center gap-2 mb-3">
