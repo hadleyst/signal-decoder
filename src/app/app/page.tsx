@@ -306,6 +306,12 @@ export default function Home() {
                 >
                   History
                 </Link>
+                <Link
+                  href="/referral"
+                  className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
+                >
+                  Refer
+                </Link>
               </>
             )}
             <span className="text-xs text-gray-500 truncate max-w-[180px]">{session.user.email}</span>

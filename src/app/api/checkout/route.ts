@@ -29,14 +29,23 @@ export async function POST(req: NextRequest) {
     customerParams.customer_email = user.email;
   }
 
+  // Optional referral code from cookie/client
+  const body = await req.json().catch(() => ({}));
+  const referralCode = typeof body?.referralCode === "string"
+    ? body.referralCode.toLowerCase().replace(/[^a-z0-9]/g, "").slice(0, 32)
+    : null;
+
+  const metadata: Record<string, string> = { supabase_user_id: user.id };
+  if (referralCode) metadata.referral_code = referralCode;
+
   const origin = req.headers.get("origin") || "http://localhost:3000";
 
   const session = await stripe.checkout.sessions.create({
     mode: "subscription",
     line_items: [{ price: process.env.NEXT_PUBLIC_STRIPE_PRICE_ID!, quantity: 1 }],
     ...customerParams,
-    metadata: { supabase_user_id: user.id },
-    subscription_data: { metadata: { supabase_user_id: user.id } },
+    metadata,
+    subscription_data: { metadata },
     allow_promotion_codes: true,
     success_url: `${origin}/?checkout=success`,
     cancel_url: `${origin}/?checkout=cancel`,

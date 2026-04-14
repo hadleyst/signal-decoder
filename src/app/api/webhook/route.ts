@@ -11,6 +11,87 @@ function getPeriodEnd(sub: Stripe.Subscription): string | null {
   return null;
 }
 
+async function processReferral(
+  supabase: ReturnType<typeof createServiceClient>,
+  refereeUserId: string,
+  referralCode: string
+) {
+  try {
+    // Normalize
+    const code = referralCode.toLowerCase().trim();
+    if (!code) return;
+
+    // Lookup referrer
+    const { data: codeRow } = await supabase
+      .from("referral_codes")
+      .select("user_id")
+      .eq("code", code)
+      .single();
+
+    const referrerUserId = codeRow?.user_id;
+    if (!referrerUserId) {
+      console.log("Referral code not found:", code);
+      return;
+    }
+
+    // Self-referral guard
+    if (referrerUserId === refereeUserId) {
+      console.log("Skipping self-referral");
+      return;
+    }
+
+    // Idempotency: already credited this referee?
+    const { data: existing } = await supabase
+      .from("referrals")
+      .select("id, status")
+      .eq("referee_user_id", refereeUserId)
+      .single();
+
+    if (existing) {
+      console.log("Referral already recorded for referee", refereeUserId);
+      return;
+    }
+
+    // Get referrer's Stripe customer ID
+    const { data: referrerSub } = await supabase
+      .from("subscriptions")
+      .select("stripe_customer_id")
+      .eq("user_id", referrerUserId)
+      .single();
+
+    if (!referrerSub?.stripe_customer_id) {
+      console.log("Referrer has no Stripe customer yet, recording pending referral");
+      await supabase.from("referrals").insert({
+        referrer_user_id: referrerUserId,
+        referee_user_id: refereeUserId,
+        code,
+        status: "pending",
+      });
+      return;
+    }
+
+    // Apply $19 customer balance credit (one free month equivalent)
+    // Negative amount = credit toward next invoice. Stacks across referrals.
+    await stripe.customers.createBalanceTransaction(referrerSub.stripe_customer_id, {
+      amount: -1900,
+      currency: "usd",
+      description: `Referral credit - 1 free month (referee: ${refereeUserId.slice(0, 8)})`,
+    });
+
+    await supabase.from("referrals").insert({
+      referrer_user_id: referrerUserId,
+      referee_user_id: refereeUserId,
+      code,
+      status: "credited",
+      credited_at: new Date().toISOString(),
+    });
+
+    console.log(`Referral credited: ${referrerUserId} earned $19 from referee ${refereeUserId}`);
+  } catch (e) {
+    console.error("Referral processing failed:", e);
+  }
+}
+
 export async function POST(req: NextRequest) {
   const body = await req.text();
   const sig = req.headers.get("stripe-signature");
@@ -54,6 +135,12 @@ export async function POST(req: NextRequest) {
         current_period_end: periodEnd,
         updated_at: new Date().toISOString(),
       }, { onConflict: "user_id" });
+
+      // Referral processing (if this signup came through a referral link)
+      const referralCode = session.metadata?.referral_code;
+      if (referralCode) {
+        await processReferral(supabase, userId, referralCode);
+      }
       break;
     }
 

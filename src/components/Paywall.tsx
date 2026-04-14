@@ -20,12 +20,27 @@ export default function Paywall({ onSignIn, onSignUp }: PaywallProps) {
 
     setCheckoutLoading(true);
     try {
+      // Read referral code from cookie (set when visitor lands on /ref/[code])
+      const referralCode = document.cookie
+        .split(";")
+        .map((c) => c.trim())
+        .find((c) => c.startsWith("signaldecoder_ref="))
+        ?.split("=")[1];
+
       const res = await fetch("/api/checkout", {
         method: "POST",
-        headers: { Authorization: `Bearer ${session.access_token}` },
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ referralCode: referralCode || null }),
       });
       const data = await res.json();
       if (data.url) {
+        // Clear the cookie so a later purchase by the same user isn't re-credited
+        if (referralCode) {
+          document.cookie = "signaldecoder_ref=; Max-Age=0; path=/";
+        }
         window.location.href = data.url;
       }
     } catch {
