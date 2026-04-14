@@ -276,10 +276,21 @@ export default function LandingPage() {
       </section>
 
       {/* Footer */}
-      <footer className="w-full text-center py-6 px-4 border-t border-white/5">
-        <p className="text-xs text-gray-600">
-          For educational purposes only. Not financial advice.
-        </p>
+      <footer className="w-full py-6 px-4 border-t border-white/5">
+        <div className="max-w-4xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-center sm:text-left">
+          <p className="text-xs text-gray-600">
+            For educational purposes only. Not financial advice.
+          </p>
+          <nav className="flex items-center gap-4 text-xs text-gray-500">
+            <Link href="/glossary" className="hover:text-cyan-400 transition-colors">
+              Glossary
+            </Link>
+            <span className="w-1 h-1 rounded-full bg-gray-700" />
+            <Link href="/app" className="hover:text-cyan-400 transition-colors">
+              Decoder
+            </Link>
+          </nav>
+        </div>
       </footer>
     </div>
   );
