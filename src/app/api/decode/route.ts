@@ -76,6 +76,7 @@ export async function POST(req: NextRequest) {
 - "riskLevel": One of "Low", "Medium", or "High", based on the aggressiveness of the signal.
 - "timeframe": The timeframe mentioned or implied (e.g. "Short-term (hours)", "Medium-term (days-weeks)", "Long-term (months+)"). If none is mentioned, use "Not specified".
 - "glossary": An array of objects with "term" and "definition" keys for any technical, crypto-specific, or jargon terms shown. Only include terms that a general audience wouldn't know.
+- "coin": An object with "symbol" (ticker, uppercase, like "BTC") and "name" (full name, like "Bitcoin") for the primary coin the signal is about. If the signal doesn't clearly reference a specific coin, set this to null. Only include one coin — the main subject of the signal.
 
 Return ONLY valid JSON, no markdown fences or extra text.`;
 

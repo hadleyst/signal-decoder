@@ -13,12 +13,18 @@ interface GlossaryItem {
   definition: string;
 }
 
+interface CoinRef {
+  symbol: string;
+  name: string;
+}
+
 interface DecodeResult {
   explanation: string;
   sentiment: "Bullish" | "Bearish" | "Neutral";
   riskLevel: "Low" | "Medium" | "High";
   timeframe: string;
   glossary: GlossaryItem[];
+  coin?: CoinRef | null;
 }
 
 const sentimentConfig: Record<string, { label: string; color: string; bg: string; icon: string }> = {
@@ -109,6 +115,8 @@ export default function Home() {
   const [resultImagePreview, setResultImagePreview] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [shareLoading, setShareLoading] = useState(false);
+  const [watchedSymbols, setWatchedSymbols] = useState<Set<string>>(new Set());
+  const [watchlistAddedCoin, setWatchlistAddedCoin] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Hydrate usage count from localStorage
@@ -134,6 +142,44 @@ export default function Home() {
   useEffect(() => {
     handleCheckoutReturn();
   }, [handleCheckoutReturn]);
+
+  // Fetch watchlist for Pro users so we know which coin prompts to hide
+  useEffect(() => {
+    if (!session || !isSubscribed) {
+      setWatchedSymbols(new Set());
+      return;
+    }
+    fetch("/api/watchlist", {
+      headers: { Authorization: `Bearer ${session.access_token}` },
+    })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (data?.watchlist) {
+          setWatchedSymbols(new Set(data.watchlist.map((w: { symbol: string }) => w.symbol)));
+        }
+      })
+      .catch(() => { /* ignore */ });
+  }, [session, isSubscribed]);
+
+  async function addToWatchlist(coin: CoinRef) {
+    if (!session) return;
+    try {
+      const res = await fetch("/api/watchlist", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({ symbol: coin.symbol, name: coin.name }),
+      });
+      if (res.ok) {
+        setWatchedSymbols((prev) => new Set(prev).add(coin.symbol));
+        setWatchlistAddedCoin(coin.symbol);
+      }
+    } catch {
+      // silent fail
+    }
+  }
 
   function handleFile(file: File) {
     setError("");
@@ -193,6 +239,7 @@ export default function Home() {
     setResult(null);
     setResultImagePreview(null);
     setShowPaywall(false);
+    setWatchlistAddedCoin(null);
 
     try {
       const headers: Record<string, string> = {
@@ -246,12 +293,20 @@ export default function Home() {
         {authLoading ? null : session ? (
           <div className="flex items-center gap-3">
             {isSubscribed && (
-              <Link
-                href="/history"
-                className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
-              >
-                History
-              </Link>
+              <>
+                <Link
+                  href="/watchlist"
+                  className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
+                >
+                  Watchlist
+                </Link>
+                <Link
+                  href="/history"
+                  className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
+                >
+                  History
+                </Link>
+              </>
             )}
             <span className="text-xs text-gray-500 truncate max-w-[180px]">{session.user.email}</span>
             <button
@@ -525,6 +580,54 @@ export default function Home() {
                   ))}
                 </div>
               </section>
+            )}
+
+            {/* Watchlist prompt — Pro users only, if signal mentioned a coin not already watched */}
+            {isSubscribed && result.coin && !watchedSymbols.has(result.coin.symbol) && watchlistAddedCoin !== result.coin.symbol && (
+              <div className="card p-4 flex items-center gap-3 animate-fade-up animate-fade-up-delay-2 border-cyan-500/20 bg-cyan-500/[0.03]">
+                <div className="w-9 h-9 rounded-full bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center shrink-0">
+                  <span className="text-[10px] font-bold text-cyan-400">
+                    {result.coin.symbol.slice(0, 4)}
+                  </span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm text-gray-200">
+                    Add <span className="font-semibold text-white">{result.coin.symbol}</span>
+                    {result.coin.name && result.coin.name !== result.coin.symbol && (
+                      <span className="text-gray-500"> ({result.coin.name})</span>
+                    )}
+                    {" "}to your watchlist?
+                  </p>
+                </div>
+                <button
+                  onClick={() => result.coin && addToWatchlist(result.coin)}
+                  className="shrink-0 rounded-lg bg-cyan-600 hover:bg-cyan-500 px-3 py-1.5 text-xs font-semibold text-white transition-colors"
+                >
+                  Add
+                </button>
+                <button
+                  onClick={() => setWatchlistAddedCoin(result.coin?.symbol || "_dismissed_")}
+                  className="shrink-0 text-xs text-gray-500 hover:text-gray-300 transition-colors"
+                  aria-label="Dismiss"
+                >
+                  <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              </div>
+            )}
+
+            {/* Confirmation after adding to watchlist */}
+            {isSubscribed && result.coin && watchlistAddedCoin === result.coin.symbol && (
+              <div className="card p-3 flex items-center gap-2 animate-fade-up border-emerald-500/20 bg-emerald-500/[0.05] justify-center">
+                <svg className="w-4 h-4 text-emerald-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2.5}>
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
+                </svg>
+                <p className="text-sm text-emerald-400">
+                  Added <span className="font-semibold">{result.coin.symbol}</span> to your watchlist.{" "}
+                  <Link href="/watchlist" className="underline hover:text-emerald-300">View</Link>
+                </p>
+              </div>
             )}
 
             {/* Share button */}
