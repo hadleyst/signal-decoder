@@ -16,3 +16,8 @@ export function incrementUsage(): number {
 export function hasReachedLimit(): boolean {
   return getUsageCount() >= FREE_LIMIT;
 }
+
+export function resetUsage(): void {
+  if (typeof window === "undefined") return;
+  localStorage.removeItem(STORAGE_KEY);
+}

@@ -5,7 +5,7 @@ import Link from "next/link";
 import { useAuth } from "@/components/AuthProvider";
 import AuthModal from "@/components/AuthModal";
 import Paywall from "@/components/Paywall";
-import { getUsageCount, incrementUsage, hasReachedLimit, FREE_LIMIT } from "@/lib/usage";
+import { getUsageCount, incrementUsage, hasReachedLimit, resetUsage, FREE_LIMIT } from "@/lib/usage";
 import { generateShareImage, downloadBlob } from "@/lib/shareImage";
 
 interface GlossaryItem {
@@ -123,6 +123,15 @@ export default function Home() {
   useEffect(() => {
     setUsageCount(getUsageCount());
   }, []);
+
+  // Pro users don't have a free-decode limit — clear any stale count from
+  // before they subscribed so the paywall check and counter can't fire.
+  useEffect(() => {
+    if (isSubscribed) {
+      resetUsage();
+      setUsageCount(0);
+    }
+  }, [isSubscribed]);
 
   // Handle checkout success redirect
   const handleCheckoutReturn = useCallback(async () => {
