@@ -2,33 +2,54 @@ import { NextRequest, NextResponse } from "next/server";
 import { stripe } from "@/lib/stripe";
 import { createServiceClient } from "@/lib/supabase";
 import Stripe from "stripe";
+import type { SupabaseClient } from "@supabase/supabase-js";
 
-function getPeriodEnd(sub: Stripe.Subscription): string | null {
-  // Newer Stripe API: field moved from Subscription root to SubscriptionItem
-  const item = sub.items?.data?.[0];
-  if (item?.current_period_end) {
-    return new Date(item.current_period_end * 1000).toISOString();
+/**
+ * Schema-resilient upsert into the subscriptions table.
+ * Does NOT require a unique constraint on user_id (the production table lacks one).
+ * Logs any errors loudly — silent failures were the original source of the webhook bug.
+ */
+async function upsertSubscription(
+  supabase: SupabaseClient,
+  userId: string,
+  fields: Record<string, unknown>
+) {
+  const payload = { ...fields, user_id: userId, updated_at: new Date().toISOString() };
+
+  const { data: existing, error: selectError } = await supabase
+    .from("subscriptions")
+    .select("id")
+    .eq("user_id", userId)
+    .limit(1)
+    .maybeSingle();
+
+  if (selectError) {
+    console.error("[webhook] subscriptions SELECT failed:", selectError);
   }
-  // Older API / fallback: still exposed on the root object
-  const root = sub as unknown as { current_period_end?: number };
-  if (typeof root.current_period_end === "number") {
-    return new Date(root.current_period_end * 1000).toISOString();
+
+  if (existing?.id) {
+    const { error } = await supabase
+      .from("subscriptions")
+      .update(payload)
+      .eq("id", existing.id);
+    if (error) console.error("[webhook] subscriptions UPDATE failed:", error);
+    else console.log(`[webhook] subscriptions row updated for user ${userId}`);
+  } else {
+    const { error } = await supabase.from("subscriptions").insert(payload);
+    if (error) console.error("[webhook] subscriptions INSERT failed:", error);
+    else console.log(`[webhook] subscriptions row inserted for user ${userId}`);
   }
-  console.warn("Could not determine current_period_end for subscription", sub.id);
-  return null;
 }
 
 async function processReferral(
-  supabase: ReturnType<typeof createServiceClient>,
+  supabase: SupabaseClient,
   refereeUserId: string,
   referralCode: string
 ) {
   try {
-    // Normalize
     const code = referralCode.toLowerCase().trim();
     if (!code) return;
 
-    // Lookup referrer
     const { data: codeRow } = await supabase
       .from("referral_codes")
       .select("user_id")
@@ -41,30 +62,27 @@ async function processReferral(
       return;
     }
 
-    // Self-referral guard
     if (referrerUserId === refereeUserId) {
       console.log("Skipping self-referral");
       return;
     }
 
-    // Idempotency: already credited this referee?
     const { data: existing } = await supabase
       .from("referrals")
       .select("id, status")
       .eq("referee_user_id", refereeUserId)
-      .single();
+      .maybeSingle();
 
     if (existing) {
       console.log("Referral already recorded for referee", refereeUserId);
       return;
     }
 
-    // Get referrer's Stripe customer ID
     const { data: referrerSub } = await supabase
       .from("subscriptions")
       .select("stripe_customer_id")
       .eq("user_id", referrerUserId)
-      .single();
+      .maybeSingle();
 
     if (!referrerSub?.stripe_customer_id) {
       console.log("Referrer has no Stripe customer yet, recording pending referral");
@@ -77,8 +95,6 @@ async function processReferral(
       return;
     }
 
-    // Apply $19 customer balance credit (one free month equivalent)
-    // Negative amount = credit toward next invoice. Stacks across referrals.
     await stripe.customers.createBalanceTransaction(referrerSub.stripe_customer_id, {
       amount: -1900,
       currency: "usd",
@@ -110,7 +126,8 @@ export async function POST(req: NextRequest) {
   let event: Stripe.Event;
   try {
     event = stripe.webhooks.constructEvent(body, sig, process.env.STRIPE_WEBHOOK_SECRET!);
-  } catch {
+  } catch (e) {
+    console.error("[webhook] signature verification failed:", e);
     return NextResponse.json({ error: "Invalid signature" }, { status: 400 });
   }
 
@@ -120,30 +137,21 @@ export async function POST(req: NextRequest) {
     case "checkout.session.completed": {
       const session = event.data.object as Stripe.Checkout.Session;
       const userId = session.metadata?.supabase_user_id;
-      if (!userId) break;
+      if (!userId) {
+        console.warn("[webhook] checkout.session.completed with no supabase_user_id metadata:", session.id);
+        break;
+      }
 
       const subscriptionId = typeof session.subscription === "string"
         ? session.subscription
         : session.subscription?.toString();
 
-      let periodEnd: string | null = null;
-      if (subscriptionId) {
-        const sub = await stripe.subscriptions.retrieve(subscriptionId, {
-          expand: ["items"],
-        });
-        periodEnd = getPeriodEnd(sub);
-      }
-
-      await supabase.from("subscriptions").upsert({
-        user_id: userId,
+      await upsertSubscription(supabase, userId, {
         stripe_customer_id: typeof session.customer === "string" ? session.customer : null,
         stripe_subscription_id: subscriptionId || null,
         status: "active",
-        current_period_end: periodEnd,
-        updated_at: new Date().toISOString(),
-      }, { onConflict: "user_id" });
+      });
 
-      // Referral processing (if this signup came through a referral link)
       const referralCode = session.metadata?.referral_code;
       if (referralCode) {
         await processReferral(supabase, userId, referralCode);
@@ -156,18 +164,13 @@ export async function POST(req: NextRequest) {
       const subscriptionId = invoice.parent?.subscription_details?.subscription;
 
       if (typeof subscriptionId === "string") {
-        const sub = await stripe.subscriptions.retrieve(subscriptionId, {
-          expand: ["items"],
-        });
+        const sub = await stripe.subscriptions.retrieve(subscriptionId);
         const userId = sub.metadata?.supabase_user_id;
         if (userId) {
-          await supabase.from("subscriptions").upsert({
-            user_id: userId,
+          await upsertSubscription(supabase, userId, {
             stripe_subscription_id: subscriptionId,
             status: "active",
-            current_period_end: getPeriodEnd(sub),
-            updated_at: new Date().toISOString(),
-          }, { onConflict: "user_id" });
+          });
         }
       }
       break;
@@ -177,10 +180,11 @@ export async function POST(req: NextRequest) {
       const sub = event.data.object as Stripe.Subscription;
       const userId = sub.metadata?.supabase_user_id;
       if (userId) {
-        await supabase.from("subscriptions").update({
-          status: "canceled",
-          updated_at: new Date().toISOString(),
-        }).eq("user_id", userId);
+        const { error } = await supabase
+          .from("subscriptions")
+          .update({ status: "canceled", updated_at: new Date().toISOString() })
+          .eq("user_id", userId);
+        if (error) console.error("[webhook] cancel update failed:", error);
       }
       break;
     }
@@ -189,13 +193,10 @@ export async function POST(req: NextRequest) {
       const sub = event.data.object as Stripe.Subscription;
       const userId = sub.metadata?.supabase_user_id;
       if (userId) {
-        await supabase.from("subscriptions").upsert({
-          user_id: userId,
+        await upsertSubscription(supabase, userId, {
           stripe_subscription_id: sub.id,
           status: sub.status === "active" ? "active" : sub.status,
-          current_period_end: getPeriodEnd(sub),
-          updated_at: new Date().toISOString(),
-        }, { onConflict: "user_id" });
+        });
       }
       break;
     }

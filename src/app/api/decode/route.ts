@@ -21,7 +21,7 @@ export async function POST(req: NextRequest) {
       authedUser = user;
       const { data } = await supabase
         .from("subscriptions")
-        .select("status, current_period_end")
+        .select("status")
         .eq("user_id", user.id)
         .single();
 

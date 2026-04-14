@@ -20,7 +20,7 @@ async function authedProUser(
 
   const { data: sub } = await supabase
     .from("subscriptions")
-    .select("status, current_period_end")
+    .select("status")
     .eq("user_id", user.id)
     .single();
 
