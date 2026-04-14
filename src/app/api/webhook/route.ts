@@ -4,10 +4,17 @@ import { createServiceClient } from "@/lib/supabase";
 import Stripe from "stripe";
 
 function getPeriodEnd(sub: Stripe.Subscription): string | null {
+  // Newer Stripe API: field moved from Subscription root to SubscriptionItem
   const item = sub.items?.data?.[0];
   if (item?.current_period_end) {
     return new Date(item.current_period_end * 1000).toISOString();
   }
+  // Older API / fallback: still exposed on the root object
+  const root = sub as unknown as { current_period_end?: number };
+  if (typeof root.current_period_end === "number") {
+    return new Date(root.current_period_end * 1000).toISOString();
+  }
+  console.warn("Could not determine current_period_end for subscription", sub.id);
   return null;
 }
 

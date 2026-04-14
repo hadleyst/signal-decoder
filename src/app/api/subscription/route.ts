@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase";
+import { isActiveSubscription } from "@/lib/subscription";
 
 export async function GET(req: NextRequest) {
   const token = req.headers.get("authorization")?.replace("Bearer ", "");
@@ -20,8 +21,5 @@ export async function GET(req: NextRequest) {
     .eq("user_id", user.id)
     .single();
 
-  const isSubscribed = data?.status === "active" &&
-    new Date(data.current_period_end) > new Date();
-
-  return NextResponse.json({ isSubscribed });
+  return NextResponse.json({ isSubscribed: isActiveSubscription(data) });
 }

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase";
+import { isActiveSubscription } from "@/lib/subscription";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 
 async function authedProUser(
@@ -23,10 +24,7 @@ async function authedProUser(
     .eq("user_id", user.id)
     .single();
 
-  const isSubscribed = sub?.status === "active" &&
-    new Date(sub.current_period_end) > new Date();
-
-  if (!isSubscribed) {
+  if (!isActiveSubscription(sub)) {
     return { error: NextResponse.json({ error: "Pro subscription required" }, { status: 403 }) };
   }
 

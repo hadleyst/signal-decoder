@@ -1,6 +1,7 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase";
+import { isActiveSubscription } from "@/lib/subscription";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 
 const client = new Anthropic();
@@ -24,8 +25,7 @@ export async function POST(req: NextRequest) {
         .eq("user_id", user.id)
         .single();
 
-      isSubscribed = data?.status === "active" &&
-        new Date(data.current_period_end) > new Date();
+      isSubscribed = isActiveSubscription(data);
 
       if (!isSubscribed) {
         return NextResponse.json(
