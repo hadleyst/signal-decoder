@@ -1,24 +1,30 @@
 import Anthropic from "@anthropic-ai/sdk";
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase";
+import type { SupabaseClient, User } from "@supabase/supabase-js";
 
 const client = new Anthropic();
 
 export async function POST(req: NextRequest) {
+  let authedUser: User | null = null;
+  let isSubscribed = false;
+  let supabase: SupabaseClient | null = null;
+
   // For authenticated users, verify they have an active subscription
   const token = req.headers.get("authorization")?.replace("Bearer ", "");
   if (token) {
-    const supabase = createServiceClient();
+    supabase = createServiceClient();
     const { data: { user } } = await supabase.auth.getUser(token);
 
     if (user) {
+      authedUser = user;
       const { data } = await supabase
         .from("subscriptions")
         .select("status, current_period_end")
         .eq("user_id", user.id)
         .single();
 
-      const isSubscribed = data?.status === "active" &&
+      isSubscribed = data?.status === "active" &&
         new Date(data.current_period_end) > new Date();
 
       if (!isSubscribed) {
@@ -107,6 +113,15 @@ Return ONLY valid JSON, no markdown fences or extra text.`;
         message.content[0].type === "text" ? message.content[0].text : "";
       const parsed = JSON.parse(text);
 
+      // Save to history for subscribed users (non-blocking — decode still succeeds if this fails)
+      if (authedUser && isSubscribed && supabase) {
+        saveHistory(supabase, authedUser.id, {
+          signalText: hasText ? signal : null,
+          image: hasImage ? { data: image, mediaType: mediaType as string } : null,
+          result: parsed,
+        }).catch((err) => console.error("History save failed:", err));
+      }
+
       return NextResponse.json(parsed);
     } catch (e) {
       console.error(`Decode error (attempt ${attempt}/${maxAttempts}):`, e);
@@ -121,5 +136,61 @@ Return ONLY valid JSON, no markdown fences or extra text.`;
       // Wait before retrying (500ms, then 1000ms)
       await new Promise((resolve) => setTimeout(resolve, attempt * 500));
     }
+  }
+}
+
+interface HistoryPayload {
+  signalText: string | null;
+  image: { data: string; mediaType: string } | null;
+  result: {
+    explanation: string;
+    sentiment: string;
+    riskLevel: string;
+    timeframe: string;
+    glossary: Array<{ term: string; definition: string }>;
+  };
+}
+
+async function saveHistory(
+  supabase: SupabaseClient,
+  userId: string,
+  payload: HistoryPayload
+) {
+  let imageUrl: string | null = null;
+
+  if (payload.image) {
+    const ext = payload.image.mediaType === "image/png" ? "png" : "jpg";
+    const uuid = crypto.randomUUID();
+    const path = `${userId}/${uuid}.${ext}`;
+    const buffer = Buffer.from(payload.image.data, "base64");
+
+    const { error: uploadError } = await supabase.storage
+      .from("signal-images")
+      .upload(path, buffer, {
+        contentType: payload.image.mediaType,
+        upsert: false,
+      });
+
+    if (uploadError) {
+      console.error("Image upload failed:", uploadError);
+    } else {
+      const { data } = supabase.storage.from("signal-images").getPublicUrl(path);
+      imageUrl = data.publicUrl;
+    }
+  }
+
+  const { error: insertError } = await supabase.from("decode_history").insert({
+    user_id: userId,
+    signal_text: payload.signalText,
+    image_url: imageUrl,
+    explanation: payload.result.explanation,
+    sentiment: payload.result.sentiment,
+    risk: payload.result.riskLevel,
+    timeframe: payload.result.timeframe,
+    glossary: payload.result.glossary,
+  });
+
+  if (insertError) {
+    console.error("History insert failed:", insertError);
   }
 }
