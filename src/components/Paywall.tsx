@@ -46,9 +46,27 @@ export default function Paywall({ onSignIn, onSignUp }: PaywallProps) {
       <h3 className="text-lg font-semibold text-white mb-1">
         You&apos;ve used all 5 free decodes
       </h3>
-      <p className="text-sm text-gray-400 mb-6">
+      <p className="text-sm text-gray-400 mb-5">
         Subscribe for unlimited signal decoding.
       </p>
+
+      {/* Early supporter banner */}
+      <div className="rounded-xl border border-cyan-500/30 bg-gradient-to-br from-cyan-500/10 to-cyan-400/5 p-4 mb-5 text-left relative overflow-hidden">
+        <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-cyan-400 to-transparent" />
+        <div className="flex items-center gap-2 mb-1">
+          <span className="text-[10px] font-bold uppercase tracking-wider bg-cyan-400 text-black px-2 py-0.5 rounded-full">
+            Limited
+          </span>
+          <p className="text-sm font-semibold text-white">
+            Early supporter offer
+          </p>
+        </div>
+        <p className="text-xs text-gray-300 leading-relaxed">
+          First 50 subscribers get <span className="text-cyan-400 font-semibold">50% off forever</span>. Use code{" "}
+          <code className="font-mono text-cyan-300 bg-cyan-500/10 border border-cyan-500/20 rounded px-1.5 py-0.5">EARLY50</code>{" "}
+          at checkout.
+        </p>
+      </div>
 
       <button
         onClick={handleSubscribe}

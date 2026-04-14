@@ -37,6 +37,7 @@ export async function POST(req: NextRequest) {
     ...customerParams,
     metadata: { supabase_user_id: user.id },
     subscription_data: { metadata: { supabase_user_id: user.id } },
+    allow_promotion_codes: true,
     success_url: `${origin}/?checkout=success`,
     cancel_url: `${origin}/?checkout=cancel`,
   });

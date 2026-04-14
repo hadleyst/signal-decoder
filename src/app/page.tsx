@@ -25,6 +25,24 @@ function Logo() {
 export default function LandingPage() {
   return (
     <div className="relative z-10 flex flex-col min-h-full">
+      {/* Early supporter announcement banner */}
+      <div className="w-full border-b border-cyan-500/20 bg-gradient-to-r from-cyan-600/10 via-cyan-500/20 to-cyan-600/10 relative overflow-hidden">
+        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-cyan-400/5 to-transparent pointer-events-none" />
+        <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-2.5 flex items-center justify-center gap-2 text-center">
+          <span className="text-[10px] font-bold uppercase tracking-wider bg-cyan-400 text-black px-2 py-0.5 rounded-full shrink-0">
+            Limited
+          </span>
+          <p className="text-xs sm:text-sm text-white">
+            <span className="font-semibold">Early supporter offer</span>
+            <span className="text-gray-400 hidden sm:inline"> — first 50 subscribers get 50% off forever.</span>
+            <span className="text-gray-400 sm:hidden"> — 50% off forever.</span>
+            {" "}Use code{" "}
+            <code className="font-mono text-cyan-300 bg-cyan-500/10 border border-cyan-500/30 rounded px-1.5 py-0.5 text-[11px]">EARLY50</code>
+            <span className="hidden sm:inline"> at checkout.</span>
+          </p>
+        </div>
+      </div>
+
       {/* Nav */}
       <nav className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-5 flex items-center justify-between">
         <Logo />
@@ -165,9 +183,14 @@ export default function LandingPage() {
                 Popular
               </span>
             </div>
-            <p className="text-3xl font-bold text-white mb-1">
-              $19<span className="text-base font-normal text-gray-500">/month</span>
-            </p>
+            <div className="flex items-baseline gap-2 mb-1">
+              <p className="text-3xl font-bold text-white">
+                $19<span className="text-base font-normal text-gray-500">/month</span>
+              </p>
+              <span className="text-sm text-cyan-400 font-medium">
+                or <span className="font-bold">$9.50</span> with EARLY50
+              </span>
+            </div>
             <p className="text-sm text-gray-500 mb-6">Cancel anytime</p>
             <ul className="space-y-3 mb-8 flex-1">
               {[
