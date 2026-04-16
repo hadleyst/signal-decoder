@@ -89,6 +89,9 @@ export default function LandingPage() {
             View pricing
           </a>
         </div>
+        <p className="mt-4 text-xs text-gray-500/75">
+          No wallet connection. No account needed. Start free.
+        </p>
       </section>
 
       {/* Demo */}

@@ -26,13 +26,6 @@ export async function POST(req: NextRequest) {
         .single();
 
       isSubscribed = isActiveSubscription(data);
-
-      if (!isSubscribed) {
-        return NextResponse.json(
-          { error: "Active subscription required" },
-          { status: 403 }
-        );
-      }
     }
   }
 

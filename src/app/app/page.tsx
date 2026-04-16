@@ -5,7 +5,8 @@ import Link from "next/link";
 import { useAuth } from "@/components/AuthProvider";
 import AuthModal from "@/components/AuthModal";
 import Paywall from "@/components/Paywall";
-import { getUsageCount, incrementUsage, hasReachedLimit, resetUsage, FREE_LIMIT } from "@/lib/usage";
+import { getUsageCount, incrementUsage, hasReachedLimit, resetUsage, FREE_LIMIT, EMAIL_GATE_AT, isEmailCaptured } from "@/lib/usage";
+import EmailGateModal from "@/components/EmailGateModal";
 import { generateShareImage, downloadBlob } from "@/lib/shareImage";
 
 interface GlossaryItem {
@@ -106,6 +107,7 @@ export default function Home() {
   const [usageCount, setUsageCount] = useState(0);
   const [showPaywall, setShowPaywall] = useState(false);
   const [showAuthModal, setShowAuthModal] = useState(false);
+  const [showEmailGate, setShowEmailGate] = useState(false);
   const [authModalTab, setAuthModalTab] = useState<"signin" | "signup">("signin");
   const [checkoutSuccess, setCheckoutSuccess] = useState(false);
   const [mode, setMode] = useState<"text" | "image">("text");
@@ -237,7 +239,13 @@ export default function Home() {
     const hasImage = mode === "image" && imageData !== null;
     if (!hasText && !hasImage) return;
 
-    // Check if user can decode
+    // Email gate: after 2 anonymous decodes, capture email before proceeding
+    if (!isSubscribed && !isEmailCaptured() && usageCount >= EMAIL_GATE_AT) {
+      setShowEmailGate(true);
+      return;
+    }
+
+    // Paywall: after 5 total decodes
     if (!isSubscribed && hasReachedLimit()) {
       setShowPaywall(true);
       return;
@@ -492,7 +500,15 @@ export default function Home() {
           </div>
         )}
 
-        {/* Paywall */}
+        {/* Email gate (decode #3) */}
+        {showEmailGate && (
+          <EmailGateModal
+            onComplete={() => { setShowEmailGate(false); handleDecode(); }}
+            onClose={() => setShowEmailGate(false)}
+          />
+        )}
+
+        {/* Paywall (decode #6) */}
         {showPaywall && (
           <Paywall
             onSignIn={() => { setAuthModalTab("signin"); setShowAuthModal(true); }}
