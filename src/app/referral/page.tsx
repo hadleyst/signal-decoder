@@ -7,7 +7,9 @@ import { useAuth } from "@/components/AuthProvider";
 interface ReferralData {
   code: string;
   url: string;
-  referralCount: number;
+  clicks: number;
+  signups: number;
+  conversions: number;
   freeMonthsEarned: number;
 }
 
@@ -101,7 +103,7 @@ export default function ReferralPage() {
 
       <main className="flex-1 w-full max-w-2xl mx-auto px-4 sm:px-6 py-8">
         <header className="mb-8">
-          <h1 className="text-3xl font-bold text-white mb-2">Referrals</h1>
+          <h1 className="text-3xl font-bold text-white mb-2">Refer <span className="text-cyan-400">&amp;</span> Earn</h1>
           <p className="text-sm text-gray-500">
             Share your link — get one free month for every friend who subscribes.
           </p>
@@ -149,20 +151,34 @@ export default function ReferralPage() {
         ) : data ? (
           <>
             {/* Stats */}
-            <div className="grid grid-cols-2 gap-3 mb-6">
+            <div className="grid grid-cols-3 gap-3 mb-4">
+              <div className="card p-5 text-center">
+                <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 mb-2">
+                  Link clicks
+                </p>
+                <p className="text-3xl font-bold text-white">{data.clicks}</p>
+              </div>
               <div className="card p-5 text-center">
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 mb-2">
                   Signups
                 </p>
-                <p className="text-3xl font-bold text-white">{data.referralCount}</p>
+                <p className="text-3xl font-bold text-white">{data.signups}</p>
               </div>
-              <div className="card p-5 text-center border-cyan-500/20 bg-cyan-500/[0.03]">
+              <div className="card p-5 text-center">
                 <p className="text-[10px] font-semibold uppercase tracking-wider text-gray-500 mb-2">
-                  Free months earned
+                  Converted to Pro
                 </p>
-                <p className="text-3xl font-bold text-cyan-400">{data.freeMonthsEarned}</p>
+                <p className="text-3xl font-bold text-white">{data.conversions}</p>
               </div>
             </div>
+            {data.freeMonthsEarned > 0 && (
+              <div className="card card-highlight p-4 text-center border-cyan-500/20 mb-6">
+                <p className="text-sm text-gray-400">
+                  You&apos;ve earned <span className="text-cyan-400 font-bold">{data.freeMonthsEarned} free month{data.freeMonthsEarned !== 1 ? "s" : ""}</span> — applied as credit on your next invoice.
+                </p>
+              </div>
+            )}
+            {data.freeMonthsEarned === 0 && <div className="mb-6" />}
 
             {/* Link */}
             <section className="card p-5 mb-6">

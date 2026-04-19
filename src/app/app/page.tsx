@@ -316,6 +316,12 @@ export default function Home() {
             >
               Leaderboard
             </Link>
+            <Link
+              href="/referral"
+              className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
+            >
+              Refer &amp; Earn
+            </Link>
             {isSubscribed && (
               <>
                 <Link
@@ -329,12 +335,6 @@ export default function Home() {
                   className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
                 >
                   History
-                </Link>
-                <Link
-                  href="/referral"
-                  className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
-                >
-                  Refer
                 </Link>
                 <Link
                   href="/settings"

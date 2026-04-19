@@ -85,11 +85,17 @@ export async function GET(req: NextRequest) {
     .eq("referrer_user_id", user.id)
     .eq("status", "credited");
 
-  // Total signups (any status) for transparency
-  const { count: totalCount } = await supabase
+  // Total signups (any status)
+  const { count: totalSignups } = await supabase
     .from("referrals")
     .select("*", { count: "exact", head: true })
     .eq("referrer_user_id", user.id);
+
+  // Click count
+  const { count: clickCount } = await supabase
+    .from("referral_clicks")
+    .select("*", { count: "exact", head: true })
+    .eq("code", code);
 
   const origin = req.headers.get("origin") || req.nextUrl.origin;
   const url = `${origin}/ref/${code}`;
@@ -97,7 +103,9 @@ export async function GET(req: NextRequest) {
   return NextResponse.json({
     code,
     url,
-    referralCount: totalCount || 0,
+    clicks: clickCount || 0,
+    signups: totalSignups || 0,
+    conversions: creditedCount || 0,
     freeMonthsEarned: creditedCount || 0,
   });
 }

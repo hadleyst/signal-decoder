@@ -1,5 +1,6 @@
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
+import { createServiceClient } from "@/lib/supabase";
 
 // 30 days
 const COOKIE_MAX_AGE = 60 * 60 * 24 * 30;
@@ -23,6 +24,15 @@ export default async function RefPage({ params }: Props) {
       httpOnly: false, // client needs to read it for checkout
       secure: process.env.NODE_ENV === "production",
     });
+
+    // Record click (non-blocking — don't delay redirect)
+    const supabase = createServiceClient();
+    supabase
+      .from("referral_clicks")
+      .insert({ code: clean })
+      .then(({ error }) => {
+        if (error) console.error("Referral click insert failed:", error.message);
+      });
   }
 
   redirect("/");
