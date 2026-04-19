@@ -50,6 +50,9 @@ export default function LandingPage() {
           <Link href="/feed" className="text-sm text-gray-400 hover:text-white transition-colors">
             Feed
           </Link>
+          <Link href="/leaderboard" className="text-sm text-gray-400 hover:text-white transition-colors">
+            Leaderboard
+          </Link>
           <Link href="/app" className="text-sm text-gray-400 hover:text-white transition-colors">
             Sign in
           </Link>

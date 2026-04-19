@@ -309,6 +309,12 @@ export default function Home() {
       <div className="w-full max-w-2xl mx-auto px-4 pt-4 flex justify-end">
         {authLoading ? null : session ? (
           <div className="flex items-center gap-3">
+            <Link
+              href="/leaderboard"
+              className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
+            >
+              Leaderboard
+            </Link>
             {isSubscribed && (
               <>
                 <Link
