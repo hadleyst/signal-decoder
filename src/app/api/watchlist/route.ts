@@ -38,7 +38,7 @@ export async function GET(req: NextRequest) {
 
   const { data, error } = await supabase
     .from("watchlist")
-    .select("symbol, name, added_at")
+    .select("symbol, name, alert_sentiment, added_at")
     .eq("user_id", user.id)
     .order("added_at", { ascending: false });
 
@@ -97,6 +97,35 @@ export async function DELETE(req: NextRequest) {
   if (error) {
     console.error("Watchlist delete failed:", error);
     return NextResponse.json({ error: "Failed to remove" }, { status: 500 });
+  }
+
+  return NextResponse.json({ ok: true });
+}
+
+const VALID_ALERTS = ["none", "any", "bullish", "bearish"];
+
+export async function PATCH(req: NextRequest) {
+  const auth = await authedProUser(req);
+  if ("error" in auth) return auth.error;
+  const { user, supabase } = auth;
+
+  const body = await req.json().catch(() => ({}));
+  const symbol = typeof body?.symbol === "string" ? body.symbol.trim().toUpperCase() : "";
+  const alertSentiment = typeof body?.alertSentiment === "string" ? body.alertSentiment.toLowerCase() : "";
+
+  if (!symbol || !VALID_ALERTS.includes(alertSentiment)) {
+    return NextResponse.json({ error: "Invalid symbol or alert value" }, { status: 400 });
+  }
+
+  const { error } = await supabase
+    .from("watchlist")
+    .update({ alert_sentiment: alertSentiment })
+    .eq("user_id", user.id)
+    .eq("symbol", symbol);
+
+  if (error) {
+    console.error("Watchlist alert update failed:", error);
+    return NextResponse.json({ error: "Failed to update alert" }, { status: 500 });
   }
 
   return NextResponse.json({ ok: true });

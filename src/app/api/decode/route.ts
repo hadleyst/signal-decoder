@@ -130,6 +130,12 @@ Return ONLY valid JSON, no markdown fences or extra text.`;
         console.error("Public signal save failed:", err);
       }
 
+      // Check watchlist alerts (non-blocking)
+      if (parsed.coin?.symbol && savedSlug) {
+        sendWatchlistAlerts(svc, parsed.coin.symbol, parsed.sentiment, savedSlug)
+          .catch((err) => console.error("Watchlist alert failed:", err));
+      }
+
       return NextResponse.json({ ...parsed, slug: savedSlug });
     } catch (e) {
       console.error(`Decode error (attempt ${attempt}/${maxAttempts}):`, e);
@@ -242,4 +248,88 @@ async function savePublicSignal(
     throw error;
   }
   console.log("Public signal saved:", slug);
+}
+
+async function sendWatchlistAlerts(
+  supabase: SupabaseClient,
+  coinSymbol: string,
+  sentiment: string,
+  slug: string,
+) {
+  // Find watchlist entries for this coin with matching alerts
+  const sentimentLower = sentiment.toLowerCase();
+  const { data: watchers, error } = await supabase
+    .from("watchlist")
+    .select("user_id, alert_sentiment")
+    .eq("symbol", coinSymbol.toUpperCase())
+    .neq("alert_sentiment", "none");
+
+  if (error || !watchers || watchers.length === 0) return;
+
+  // Filter by sentiment match
+  const matched = watchers.filter((w) =>
+    w.alert_sentiment === "any" || w.alert_sentiment === sentimentLower
+  );
+  if (matched.length === 0) return;
+
+  // Lazy-load Resend
+  const key = process.env.RESEND_API_KEY;
+  if (!key) {
+    console.error("Watchlist alerts: RESEND_API_KEY not set, skipping");
+    return;
+  }
+  const { Resend } = await import("resend");
+  const resend = new Resend(key);
+
+  const signalUrl = `https://signaldecoder.app/signal/${slug}`;
+
+  for (const watcher of matched) {
+    try {
+      const { data: userData } = await supabase.auth.admin.getUserById(watcher.user_id);
+      const email = userData?.user?.email;
+      if (!email) continue;
+
+      await resend.emails.send({
+        from: "SignalDecoder <alerts@signaldecoder.app>",
+        to: email,
+        subject: `New ${sentiment} signal decoded for $${coinSymbol}`,
+        html: `
+<!DOCTYPE html>
+<html>
+<head><meta charset="utf-8"></head>
+<body style="margin:0;padding:0;background:#0a0b0f;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',system-ui,sans-serif;">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#0a0b0f;">
+    <tr><td align="center" style="padding:40px 16px;">
+      <table width="100%" cellpadding="0" cellspacing="0" style="max-width:480px;">
+        <tr><td style="text-align:center;padding-bottom:24px;">
+          <span style="font-size:20px;font-weight:700;color:#fff;">Signal</span><span style="font-size:20px;font-weight:700;color:#22d3ee;">Decoder</span>
+        </td></tr>
+        <tr><td style="background:rgba(255,255,255,0.03);border:1px solid rgba(255,255,255,0.06);border-radius:12px;padding:24px;">
+          <p style="color:#787878;font-size:12px;margin:0 0 8px 0;text-transform:uppercase;letter-spacing:0.5px;font-weight:600;">Watchlist Alert</p>
+          <p style="color:#fff;font-size:18px;font-weight:700;margin:0 0 12px 0;">
+            New <span style="color:${sentiment === "Bullish" ? "#34d399" : sentiment === "Bearish" ? "#f87171" : "#fbbf24"}">${sentiment}</span> signal for <span style="color:#22d3ee;">$${coinSymbol}</span>
+          </p>
+          <p style="color:#bcbcbc;font-size:14px;line-height:1.5;margin:0 0 20px 0;">
+            A new signal has been decoded for a coin on your watchlist. Click below to see the full breakdown.
+          </p>
+          <a href="${signalUrl}" style="display:inline-block;background:#0891b2;color:#fff;font-size:14px;font-weight:600;text-decoration:none;padding:10px 24px;border-radius:8px;">
+            View decode &rarr;
+          </a>
+        </td></tr>
+        <tr><td style="text-align:center;padding-top:24px;">
+          <p style="color:#545454;font-size:11px;margin:0;">
+            <a href="https://signaldecoder.app/watchlist" style="color:#787878;text-decoration:underline;">Manage alerts</a> &middot; signaldecoder.app
+          </p>
+        </td></tr>
+      </table>
+    </td></tr>
+  </table>
+</body>
+</html>`,
+      });
+      console.log(`Watchlist alert sent to ${email} for $${coinSymbol} (${sentiment})`);
+    } catch (e) {
+      console.error(`Watchlist alert failed for user ${watcher.user_id}:`, e);
+    }
+  }
 }
