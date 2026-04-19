@@ -116,15 +116,21 @@ Return ONLY valid JSON, no markdown fences or extra text.`;
         }).catch((err) => console.error("History save failed:", err));
       }
 
-      // Save a public signal page (non-blocking)
+      // Save a public signal page (must complete before returning slug)
       const svc = supabase || createServiceClient();
       const slug = generateSlug();
-      savePublicSignal(svc, slug, {
-        signalText: hasText ? signal : null,
-        result: parsed,
-      }).catch((err) => console.error("Public signal save failed:", err));
+      let savedSlug: string | null = null;
+      try {
+        await savePublicSignal(svc, slug, {
+          signalText: hasText ? signal : null,
+          result: parsed,
+        });
+        savedSlug = slug;
+      } catch (err) {
+        console.error("Public signal save failed:", err);
+      }
 
-      return NextResponse.json({ ...parsed, slug });
+      return NextResponse.json({ ...parsed, slug: savedSlug });
     } catch (e) {
       console.error(`Decode error (attempt ${attempt}/${maxAttempts}):`, e);
 
@@ -220,7 +226,7 @@ async function savePublicSignal(
   slug: string,
   payload: { signalText: string | null; result: HistoryPayload["result"] & { coin?: { symbol: string; name: string } | null } },
 ) {
-  const { error } = await supabase.from("public_signals").insert({
+  const row = {
     slug,
     signal_text: payload.signalText,
     explanation: payload.result.explanation,
@@ -229,6 +235,11 @@ async function savePublicSignal(
     timeframe: payload.result.timeframe,
     glossary: payload.result.glossary,
     coin_symbol: payload.result.coin?.symbol || null,
-  });
-  if (error) console.error("Public signal insert failed:", error);
+  };
+  const { error } = await supabase.from("public_signals").insert(row);
+  if (error) {
+    console.error("Public signal insert FAILED:", error.message, error.details, error.hint);
+    throw error;
+  }
+  console.log("Public signal saved:", slug);
 }

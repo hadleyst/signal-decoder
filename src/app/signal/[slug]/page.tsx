@@ -56,7 +56,14 @@ async function getSignal(slug: string): Promise<SignalRow | null> {
     .select("slug, signal_text, explanation, sentiment, risk, timeframe, glossary, coin_symbol, created_at")
     .eq("slug", slug)
     .single();
-  if (error || !data) return null;
+  if (error) {
+    console.error(`Signal page lookup failed for slug="${slug}":`, error.message, error.details);
+    return null;
+  }
+  if (!data) {
+    console.error(`Signal page: no row found for slug="${slug}"`);
+    return null;
+  }
   return data as SignalRow;
 }
 
