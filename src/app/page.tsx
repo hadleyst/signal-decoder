@@ -25,24 +25,6 @@ function Logo() {
 export default function LandingPage() {
   return (
     <div className="relative z-10 flex flex-col min-h-full">
-      {/* Early supporter announcement banner */}
-      <div className="w-full border-b border-cyan-500/20 bg-gradient-to-r from-cyan-600/10 via-cyan-500/20 to-cyan-600/10 relative overflow-hidden">
-        <div className="absolute inset-0 bg-gradient-to-r from-transparent via-cyan-400/5 to-transparent pointer-events-none" />
-        <div className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-2.5 flex items-center justify-center gap-2 text-center">
-          <span className="text-[10px] font-bold uppercase tracking-wider bg-cyan-400 text-black px-2 py-0.5 rounded-full shrink-0">
-            Limited
-          </span>
-          <p className="text-xs sm:text-sm text-white">
-            <span className="font-semibold">Early supporter offer</span>
-            <span className="text-gray-400 hidden sm:inline"> — first 50 subscribers get 50% off forever.</span>
-            <span className="text-gray-400 sm:hidden"> — 50% off forever.</span>
-            {" "}Use code{" "}
-            <code className="font-mono text-cyan-300 bg-cyan-500/10 border border-cyan-500/30 rounded px-1.5 py-0.5 text-[11px]">EARLY50</code>
-            <span className="hidden sm:inline"> at checkout.</span>
-          </p>
-        </div>
-      </div>
-
       {/* Nav */}
       <nav className="w-full max-w-6xl mx-auto px-4 sm:px-6 py-5 flex items-center justify-between">
         <Logo />
@@ -148,84 +130,7 @@ export default function LandingPage() {
         </div>
       </section>
 
-      {/* Pricing */}
-      <section id="pricing" className="w-full max-w-4xl mx-auto px-4 sm:px-6 pb-24">
-        <h2 className="text-3xl sm:text-4xl font-bold text-white text-center mb-4">
-          Simple pricing
-        </h2>
-        <p className="text-gray-400 text-center mb-12 max-w-lg mx-auto">
-          Start decoding signals for free. Upgrade when you need more.
-        </p>
-
-        <div className="grid sm:grid-cols-2 gap-6 max-w-2xl mx-auto">
-          {/* Free tier */}
-          <div className="card p-6 flex flex-col">
-            <h3 className="text-lg font-semibold text-white mb-1">Free</h3>
-            <p className="text-3xl font-bold text-white mb-1">
-              $0<span className="text-base font-normal text-gray-500">/month</span>
-            </p>
-            <p className="text-sm text-gray-500 mb-6">No account required</p>
-            <ul className="space-y-3 mb-8 flex-1">
-              {["5 signal decodes", "Sentiment analysis", "Risk assessment", "Jargon glossary"].map((item) => (
-                <li key={item} className="flex items-center gap-2.5 text-sm text-gray-300">
-                  <svg className="w-4 h-4 text-cyan-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                  </svg>
-                  {item}
-                </li>
-              ))}
-            </ul>
-            <Link
-              href="/app"
-              className="w-full rounded-xl border border-white/10 px-4 py-3 text-sm font-medium text-gray-300 hover:bg-white/5 transition-colors text-center"
-            >
-              Get started
-            </Link>
-          </div>
-
-          {/* Pro tier */}
-          <div className="card p-6 flex flex-col border-cyan-500/30 relative overflow-hidden">
-            <div className="absolute top-0 left-0 right-0 h-px bg-gradient-to-r from-transparent via-cyan-400 to-transparent" />
-            <div className="flex items-center gap-2 mb-1">
-              <h3 className="text-lg font-semibold text-white">Pro</h3>
-              <span className="text-[10px] font-semibold uppercase tracking-wider bg-cyan-500/10 text-cyan-400 px-2 py-0.5 rounded-full border border-cyan-500/20">
-                Popular
-              </span>
-            </div>
-            <div className="flex items-baseline gap-2 mb-1">
-              <p className="text-3xl font-bold text-white">
-                $19<span className="text-base font-normal text-gray-500">/month</span>
-              </p>
-              <span className="text-sm text-cyan-400 font-medium">
-                or <span className="font-bold">$9.50</span> with EARLY50
-              </span>
-            </div>
-            <p className="text-sm text-gray-500 mb-6">Cancel anytime</p>
-            <ul className="space-y-3 mb-8 flex-1">
-              {[
-                "Unlimited decodes",
-                "Sentiment analysis",
-                "Risk assessment",
-                "Jargon glossary",
-                "Syncs across devices",
-              ].map((item) => (
-                <li key={item} className="flex items-center gap-2.5 text-sm text-gray-300">
-                  <svg className="w-4 h-4 text-cyan-400 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                    <path strokeLinecap="round" strokeLinejoin="round" d="M4.5 12.75l6 6 9-13.5" />
-                  </svg>
-                  {item}
-                </li>
-              ))}
-            </ul>
-            <Link
-              href="/app"
-              className="w-full rounded-xl bg-gradient-to-r from-cyan-600 to-cyan-500 px-4 py-3 text-sm font-semibold text-white hover:from-cyan-500 hover:to-cyan-400 transition-all duration-200 shadow-lg shadow-cyan-500/20 text-center"
-            >
-              Start free, upgrade later
-            </Link>
-          </div>
-        </div>
-      </section>
+      {/* Pricing section removed — free + ads model */}
 
       {/* Testimonials */}
       <section className="w-full max-w-5xl mx-auto px-4 sm:px-6 pb-24">

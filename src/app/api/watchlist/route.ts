@@ -3,7 +3,7 @@ import { createServiceClient } from "@/lib/supabase";
 import { isActiveSubscription } from "@/lib/subscription";
 import type { SupabaseClient, User } from "@supabase/supabase-js";
 
-async function authedProUser(
+async function authedUser(
   req: NextRequest
 ): Promise<{ user: User; supabase: SupabaseClient } | { error: NextResponse }> {
   const token = req.headers.get("authorization")?.replace("Bearer ", "");
@@ -18,21 +18,12 @@ async function authedProUser(
     return { error: NextResponse.json({ error: "Invalid session" }, { status: 401 }) };
   }
 
-  const { data: sub } = await supabase
-    .from("subscriptions")
-    .select("status")
-    .eq("user_id", user.id)
-    .single();
-
-  if (!isActiveSubscription(sub)) {
-    return { error: NextResponse.json({ error: "Pro subscription required" }, { status: 403 }) };
-  }
-
+  // Pro gate removed — all authenticated users have access
   return { user, supabase };
 }
 
 export async function GET(req: NextRequest) {
-  const auth = await authedProUser(req);
+  const auth = await authedUser(req);
   if ("error" in auth) return auth.error;
   const { user, supabase } = auth;
 
@@ -51,7 +42,7 @@ export async function GET(req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const auth = await authedProUser(req);
+  const auth = await authedUser(req);
   if ("error" in auth) return auth.error;
   const { user, supabase } = auth;
 
@@ -77,7 +68,7 @@ export async function POST(req: NextRequest) {
 }
 
 export async function DELETE(req: NextRequest) {
-  const auth = await authedProUser(req);
+  const auth = await authedUser(req);
   if ("error" in auth) return auth.error;
   const { user, supabase } = auth;
 
@@ -105,7 +96,7 @@ export async function DELETE(req: NextRequest) {
 const VALID_ALERTS = ["none", "any", "bullish", "bearish"];
 
 export async function PATCH(req: NextRequest) {
-  const auth = await authedProUser(req);
+  const auth = await authedUser(req);
   if ("error" in auth) return auth.error;
   const { user, supabase } = auth;
 

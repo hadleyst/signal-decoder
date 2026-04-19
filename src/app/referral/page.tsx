@@ -126,24 +126,6 @@ export default function ReferralPage() {
               Go to app
             </Link>
           </div>
-        ) : !isSubscribed ? (
-          <div className="card p-8 text-center">
-            <div className="w-10 h-10 rounded-full bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center mx-auto mb-4">
-              <svg className="w-5 h-5 text-cyan-400" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M16.5 10.5V6.75a4.5 4.5 0 1 0-9 0v3.75m-.75 11.25h10.5a2.25 2.25 0 0 0 2.25-2.25v-6.75a2.25 2.25 0 0 0-2.25-2.25H6.75a2.25 2.25 0 0 0-2.25 2.25v6.75a2.25 2.25 0 0 0 2.25 2.25Z" />
-              </svg>
-            </div>
-            <h2 className="text-lg font-semibold text-white mb-2">Referrals are a Pro feature</h2>
-            <p className="text-sm text-gray-400 mb-6 max-w-sm mx-auto">
-              Upgrade to Pro to get your referral link and earn free months.
-            </p>
-            <Link
-              href="/app"
-              className="inline-block rounded-xl bg-gradient-to-r from-cyan-600 to-cyan-500 px-6 py-3 text-sm font-semibold text-white hover:from-cyan-500 hover:to-cyan-400 transition-colors"
-            >
-              Upgrade to Pro
-            </Link>
-          </div>
         ) : error ? (
           <div className="rounded-xl border border-red-500/20 bg-red-500/5 px-4 py-3 text-sm text-red-400">
             {error}

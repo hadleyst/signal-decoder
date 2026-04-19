@@ -120,19 +120,6 @@ export default function SettingsPage() {
               Go to app
             </Link>
           </div>
-        ) : !isSubscribed ? (
-          <div className="card p-8 text-center">
-            <h2 className="text-lg font-semibold text-white mb-2">Settings are a Pro feature</h2>
-            <p className="text-sm text-gray-400 mb-6 max-w-sm mx-auto">
-              Upgrade to Pro to manage your preferences.
-            </p>
-            <Link
-              href="/app"
-              className="inline-block rounded-xl bg-gradient-to-r from-cyan-600 to-cyan-500 px-6 py-3 text-sm font-semibold text-white hover:from-cyan-500 hover:to-cyan-400 transition-colors"
-            >
-              Upgrade to Pro
-            </Link>
-          </div>
         ) : (
           <>
             <section className="card p-5 mb-4">

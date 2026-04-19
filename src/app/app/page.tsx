@@ -266,18 +266,6 @@ export default function Home() {
     const hasImage = mode === "image" && imageData !== null;
     if (!hasText && !hasImage) return;
 
-    // Email gate: after 2 anonymous decodes, capture email before proceeding
-    if (!isSubscribed && !isEmailCaptured() && usageCount >= EMAIL_GATE_AT) {
-      setShowEmailGate(true);
-      return;
-    }
-
-    // Paywall: after 5 total decodes
-    if (!isSubscribed && hasReachedLimit()) {
-      setShowPaywall(true);
-      return;
-    }
-
     setLoading(true);
     setError("");
     setResult(null);
@@ -317,10 +305,9 @@ export default function Home() {
         setResultImagePreview(imagePreview);
       }
 
-      // Increment usage for non-subscribers
-      if (!isSubscribed) {
-        const newCount = incrementUsage();
-        setUsageCount(newCount);
+      // Usage tracking (kept for analytics, no longer gates)
+      if (!session) {
+        incrementUsage();
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : "Something went wrong");
@@ -331,7 +318,7 @@ export default function Home() {
 
   const sentiment = result ? sentimentConfig[result.sentiment] : null;
   const risk = result ? riskConfig[result.riskLevel] : null;
-  const showUsageCounter = !isSubscribed && !authLoading;
+  const showUsageCounter = false; // disabled — free model
 
   return (
     <div className="relative z-10 flex flex-col min-h-full">
@@ -351,28 +338,24 @@ export default function Home() {
             >
               Refer &amp; Earn
             </Link>
-            {isSubscribed && (
-              <>
-                <Link
-                  href="/watchlist"
-                  className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
-                >
-                  Watchlist
-                </Link>
-                <Link
-                  href="/history"
-                  className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
-                >
-                  Saved
-                </Link>
-                <Link
-                  href="/settings"
-                  className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
-                >
-                  Settings
-                </Link>
-              </>
-            )}
+            <Link
+              href="/watchlist"
+              className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
+            >
+              Watchlist
+            </Link>
+            <Link
+              href="/history"
+              className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
+            >
+              Saved
+            </Link>
+            <Link
+              href="/settings"
+              className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
+            >
+              Settings
+            </Link>
             <span className="text-xs text-gray-500 truncate max-w-[180px]">{session.user.email}</span>
             <button
               onClick={signOut}
@@ -536,21 +519,7 @@ export default function Home() {
           </div>
         )}
 
-        {/* Email gate (decode #3) */}
-        {showEmailGate && (
-          <EmailGateModal
-            onComplete={() => { setShowEmailGate(false); handleDecode(); }}
-            onClose={() => setShowEmailGate(false)}
-          />
-        )}
-
-        {/* Paywall (decode #6) */}
-        {showPaywall && (
-          <Paywall
-            onSignIn={() => { setAuthModalTab("signin"); setShowAuthModal(true); }}
-            onSignUp={() => { setAuthModalTab("signup"); setShowAuthModal(true); }}
-          />
-        )}
+        {/* Email gate and paywall disabled — free + ads model */}
 
         {/* Loading */}
         {loading && <LoadingState />}
@@ -655,8 +624,8 @@ export default function Home() {
               </section>
             )}
 
-            {/* Watchlist prompt — Pro users only, if signal mentioned a coin not already watched */}
-            {isSubscribed && result.coin && !watchedSymbols.has(result.coin.symbol) && watchlistAddedCoin !== result.coin.symbol && (
+            {/* Watchlist prompt — if signal mentioned a coin not already watched */}
+            {session && result.coin && !watchedSymbols.has(result.coin.symbol) && watchlistAddedCoin !== result.coin.symbol && (
               <div className="card p-4 flex items-center gap-3 animate-fade-up animate-fade-up-delay-2 border-cyan-500/20 bg-cyan-500/[0.03]">
                 <div className="w-9 h-9 rounded-full bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center shrink-0">
                   <span className="text-[10px] font-bold text-cyan-400">
@@ -718,7 +687,7 @@ export default function Home() {
               )}
             </div>
             <div className="flex justify-center gap-3 pt-1">
-              {isSubscribed && (
+              {session && (
                 <button
                   onClick={handleSave}
                   disabled={saving || saved}
@@ -756,6 +725,11 @@ export default function Home() {
                   </>
                 )}
               </button>
+            </div>
+
+            {/* Coinzilla ad slot */}
+            <div className="ad-slot mt-6 rounded-xl border border-white/5 bg-white/[0.02] p-4 text-center min-h-[90px] flex items-center justify-center">
+              <span className="text-[10px] text-gray-600 uppercase tracking-wider">Advertisement</span>
             </div>
           </div>
         )}

@@ -199,8 +199,13 @@ export default async function SignalPage(
           )}
         </article>
 
+        {/* Coinzilla ad slot */}
+        <div className="ad-slot mt-8 rounded-xl border border-white/5 bg-white/[0.02] p-4 text-center min-h-[90px] flex items-center justify-center">
+          <span className="text-[10px] text-gray-600 uppercase tracking-wider">Advertisement</span>
+        </div>
+
         {/* CTA */}
-        <div className="mt-8 card p-6 text-center">
+        <div className="mt-6 card p-6 text-center">
           <h2 className="text-lg font-semibold text-white mb-2">
             Decode your own signal
           </h2>

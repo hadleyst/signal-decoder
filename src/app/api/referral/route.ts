@@ -60,16 +60,7 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: "Invalid session" }, { status: 401 });
   }
 
-  // Pro gate
-  const { data: sub } = await supabase
-    .from("subscriptions")
-    .select("status")
-    .eq("user_id", user.id)
-    .single();
-
-  if (!isActiveSubscription(sub)) {
-    return NextResponse.json({ error: "Pro subscription required" }, { status: 403 });
-  }
+  // Pro gate removed — all authenticated users have access
 
   let code: string;
   try {

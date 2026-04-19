@@ -139,6 +139,11 @@ export default function LeaderboardPage() {
           </p>
         </header>
 
+        {/* Coinzilla ad slot */}
+        <div className="ad-slot mb-6 rounded-xl border border-white/5 bg-white/[0.02] p-4 text-center min-h-[90px] flex items-center justify-center">
+          <span className="text-[10px] text-gray-600 uppercase tracking-wider">Advertisement</span>
+        </div>
+
         {loading && (
           <div className="flex justify-center py-20">
             <div className="dot-loader flex gap-2">

@@ -69,10 +69,8 @@ function Logo() {
   );
 }
 
-const FREE_VISIBLE = 3;
-
 export default function FeedPage() {
-  const { session, isSubscribed, loading: authLoading } = useAuth();
+  const { session, loading: authLoading } = useAuth();
   const [feed, setFeed] = useState<FeedPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -158,8 +156,7 @@ export default function FeedPage() {
     });
   }
 
-  const visibleFeed = isSubscribed ? feed : feed.slice(0, FREE_VISIBLE);
-  const gatedCount = isSubscribed ? 0 : Math.max(0, feed.length - FREE_VISIBLE);
+  const visibleFeed = feed; // all posts visible — free model
 
   return (
     <div className="relative z-10 flex flex-col min-h-full">
@@ -257,13 +254,21 @@ export default function FeedPage() {
 
         {!loading && visibleFeed.length > 0 && (
           <div className="space-y-3">
-            {visibleFeed.map((post) => {
+            {visibleFeed.map((post, idx) => {
               const expanded = expandedIds.has(post.id);
               const sentiment = sentimentConfig[post.sentiment];
               const risk = riskConfig[post.riskLevel];
+              const showAd = idx > 0 && idx % 3 === 0;
 
               return (
-                <article key={post.id} className="card overflow-hidden animate-fade-up">
+                <div key={post.id}>
+                  {showAd && (
+                    /* Coinzilla ad slot */
+                    <div className="ad-slot mb-3 rounded-xl border border-white/5 bg-white/[0.02] p-4 text-center min-h-[90px] flex items-center justify-center">
+                      <span className="text-[10px] text-gray-600 uppercase tracking-wider">Advertisement</span>
+                    </div>
+                  )}
+                <article className="card overflow-hidden animate-fade-up">
                   <div className="p-5">
                     {/* Meta row */}
                     <div className="flex items-center gap-3 text-xs text-gray-500 mb-3">
@@ -312,7 +317,7 @@ export default function FeedPage() {
 
                     {/* Action row: save + share + glossary */}
                     <div className="flex items-center gap-3 mb-1">
-                      {session && isSubscribed && (
+                      {session && (
                         <button
                           onClick={() => handleSave(post)}
                           disabled={savingId === post.id || savedIds.has(post.id)}
@@ -392,29 +397,13 @@ export default function FeedPage() {
                     </div>
                   )}
                 </article>
+                </div>
               );
             })}
           </div>
         )}
 
-        {/* Pro gate */}
-        {!loading && !authLoading && gatedCount > 0 && (
-          <div className="mt-6 card card-highlight p-6 text-center border-cyan-500/20">
-            <div className="text-2xl mb-2">&#128274;</div>
-            <h2 className="text-lg font-semibold text-white mb-2">
-              {gatedCount} more decoded signal{gatedCount !== 1 ? "s" : ""} available
-            </h2>
-            <p className="text-sm text-gray-400 mb-4">
-              Upgrade to Pro to see the full decoded feed, unlimited signal decodes, history, and more.
-            </p>
-            <Link
-              href="/app"
-              className="inline-block rounded-xl bg-gradient-to-r from-cyan-600 to-cyan-500 px-6 py-3 text-sm font-semibold text-white hover:from-cyan-500 hover:to-cyan-400 transition-colors"
-            >
-              Upgrade to Pro
-            </Link>
-          </div>
-        )}
+        {/* Pro gate removed — free + ads model */}
 
         {/* CTA */}
         {!loading && feed.length > 0 && (

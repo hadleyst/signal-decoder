@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createServiceClient } from "@/lib/supabase";
-import { isActiveSubscription } from "@/lib/subscription";
 
 async function authenticate(req: NextRequest) {
   const token = req.headers.get("authorization")?.replace("Bearer ", "");
@@ -8,12 +7,7 @@ async function authenticate(req: NextRequest) {
   const supabase = createServiceClient();
   const { data: { user } } = await supabase.auth.getUser(token);
   if (!user) return null;
-  const { data: sub } = await supabase
-    .from("subscriptions")
-    .select("status")
-    .eq("user_id", user.id)
-    .single();
-  if (!isActiveSubscription(sub)) return null;
+  // Pro gate removed — all authenticated users can save
   return { user, supabase };
 }
 
