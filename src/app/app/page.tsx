@@ -117,6 +117,7 @@ export default function Home() {
   const [resultImagePreview, setResultImagePreview] = useState<string | null>(null);
   const [dragOver, setDragOver] = useState(false);
   const [shareLoading, setShareLoading] = useState(false);
+  const [publicSlug, setPublicSlug] = useState<string | null>(null);
   const [watchedSymbols, setWatchedSymbols] = useState<Set<string>>(new Set());
   const [watchlistAddedCoin, setWatchlistAddedCoin] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -217,7 +218,7 @@ export default function Home() {
     if (!result) return;
     setShareLoading(true);
     try {
-      await shareSignal(result, result.coin?.symbol);
+      await shareSignal(result, result.coin?.symbol, publicSlug || undefined);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to generate image");
     } finally {
@@ -255,6 +256,7 @@ export default function Home() {
     setResultImagePreview(null);
     setShowPaywall(false);
     setWatchlistAddedCoin(null);
+    setPublicSlug(null);
 
     try {
       const headers: Record<string, string> = {
@@ -281,6 +283,7 @@ export default function Home() {
 
       const data = await res.json();
       setResult(data);
+      if (data.slug) setPublicSlug(data.slug);
       if (hasImage) {
         setResultImagePreview(imagePreview);
       }
@@ -671,8 +674,21 @@ export default function Home() {
               </div>
             )}
 
-            {/* Share button */}
-            <div className="flex justify-center pt-2 animate-fade-up animate-fade-up-delay-3">
+            {/* Public link + Share button */}
+            <div className="flex flex-col items-center gap-3 pt-2 animate-fade-up animate-fade-up-delay-3">
+              {publicSlug && (
+                <Link
+                  href={`/signal/${publicSlug}`}
+                  className="inline-flex items-center gap-1.5 text-xs font-medium text-cyan-400 hover:text-cyan-300 transition-colors"
+                >
+                  <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M13.19 8.688a4.5 4.5 0 0 1 1.242 7.244l-4.5 4.5a4.5 4.5 0 0 1-6.364-6.364l1.757-1.757m13.35-.622 1.757-1.757a4.5 4.5 0 0 0-6.364-6.364l-4.5 4.5a4.5 4.5 0 0 0 1.242 7.244" />
+                  </svg>
+                  View public page
+                </Link>
+              )}
+            </div>
+            <div className="flex justify-center pt-1">
               <button
                 onClick={handleShare}
                 disabled={shareLoading}

@@ -116,7 +116,15 @@ Return ONLY valid JSON, no markdown fences or extra text.`;
         }).catch((err) => console.error("History save failed:", err));
       }
 
-      return NextResponse.json(parsed);
+      // Save a public signal page (non-blocking)
+      const svc = supabase || createServiceClient();
+      const slug = generateSlug();
+      savePublicSignal(svc, slug, {
+        signalText: hasText ? signal : null,
+        result: parsed,
+      }).catch((err) => console.error("Public signal save failed:", err));
+
+      return NextResponse.json({ ...parsed, slug });
     } catch (e) {
       console.error(`Decode error (attempt ${attempt}/${maxAttempts}):`, e);
 
@@ -196,4 +204,31 @@ async function saveHistory(
   if (insertError) {
     console.error("History insert failed:", insertError);
   }
+}
+
+function generateSlug(): string {
+  const chars = "abcdefghijklmnopqrstuvwxyz0123456789";
+  let slug = "";
+  const bytes = new Uint8Array(6);
+  crypto.getRandomValues(bytes);
+  for (let i = 0; i < 6; i++) slug += chars[bytes[i] % chars.length];
+  return slug;
+}
+
+async function savePublicSignal(
+  supabase: SupabaseClient,
+  slug: string,
+  payload: { signalText: string | null; result: HistoryPayload["result"] & { coin?: { symbol: string; name: string } | null } },
+) {
+  const { error } = await supabase.from("public_signals").insert({
+    slug,
+    signal_text: payload.signalText,
+    explanation: payload.result.explanation,
+    sentiment: payload.result.sentiment,
+    risk: payload.result.riskLevel,
+    timeframe: payload.result.timeframe,
+    glossary: payload.result.glossary,
+    coin_symbol: payload.result.coin?.symbol || null,
+  });
+  if (error) console.error("Public signal insert failed:", error);
 }
