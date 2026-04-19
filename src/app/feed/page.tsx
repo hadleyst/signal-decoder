@@ -427,7 +427,7 @@ export default function FeedPage() {
 
       <footer className="w-full text-center py-6 px-4 border-t border-white/5">
         <p className="text-xs text-gray-600">
-          News sourced from CryptoPanic. Decodes are AI-generated and for educational purposes only. Not financial advice.
+          Signals sourced from CoinGecko. Decodes are AI-generated and for educational purposes only. Not financial advice.
         </p>
       </footer>
     </div>
