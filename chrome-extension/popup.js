@@ -114,5 +114,24 @@ chrome.runtime.onMessage.addListener((msg) => {
   }
 });
 
-// Render on open
-render();
+// Poll for state changes while loading — the onMessage can be missed
+// if the popup window opens after the background script sends it
+let pollInterval = null;
+function startPolling() {
+  if (pollInterval) return;
+  pollInterval = setInterval(() => {
+    chrome.storage.local.get(["decodeState"], (data) => {
+      if (data.decodeState !== "loading") {
+        clearInterval(pollInterval);
+        pollInterval = null;
+        render();
+      }
+    });
+  }, 500);
+}
+
+// Render on open, start polling if loading
+chrome.storage.local.get(["decodeState"], (data) => {
+  render();
+  if (data.decodeState === "loading") startPolling();
+});

@@ -14,7 +14,7 @@ chrome.contextMenus.onClicked.addListener(async (info) => {
   const signal = info.selectionText.trim();
   if (!signal) return;
 
-  // Store signal + loading state so popup can read it
+  // Store loading state and open the popup window immediately
   await chrome.storage.local.set({
     decodeState: "loading",
     decodeSignal: signal,
@@ -22,12 +22,19 @@ chrome.contextMenus.onClicked.addListener(async (info) => {
     decodeError: null,
   });
 
-  // Open the popup
-  // Note: programmatic popup open isn't supported in MV3,
-  // so we decode in background and the user clicks the extension icon to see results.
-  // Send a message to any open popup to refresh.
-  chrome.runtime.sendMessage({ type: "decode-started" }).catch(() => {});
+  // Open popup.html in a small popup-style window so the user sees
+  // the loading spinner right away. MV3 doesn't allow opening the
+  // action popup programmatically, so we use a real window instead.
+  const popupURL = chrome.runtime.getURL("popup.html");
+  chrome.windows.create({
+    url: popupURL,
+    type: "popup",
+    width: 420,
+    height: 520,
+    focused: true,
+  });
 
+  // Decode the signal
   try {
     const res = await fetch("https://signaldecoder.app/api/decode", {
       method: "POST",
@@ -48,12 +55,8 @@ chrome.contextMenus.onClicked.addListener(async (info) => {
       decodeError: null,
     });
 
-    // Notify popup
+    // Notify the popup window to re-render
     chrome.runtime.sendMessage({ type: "decode-complete" }).catch(() => {});
-
-    // Show notification badge
-    chrome.action.setBadgeText({ text: "!" });
-    chrome.action.setBadgeBackgroundColor({ color: "#06b6d4" });
   } catch (e) {
     await chrome.storage.local.set({
       decodeState: "error",
@@ -61,7 +64,5 @@ chrome.contextMenus.onClicked.addListener(async (info) => {
       decodeError: e.message || "Failed to decode",
     });
     chrome.runtime.sendMessage({ type: "decode-error" }).catch(() => {});
-    chrome.action.setBadgeText({ text: "!" });
-    chrome.action.setBadgeBackgroundColor({ color: "#ef4444" });
   }
 });
