@@ -2,11 +2,23 @@
  * Register the /decode slash command with Discord.
  *
  * Run once (or after changing commands):
- *   DISCORD_APP_ID=xxx DISCORD_BOT_TOKEN=xxx node register-commands.js
+ *   node register-commands.js
  *
- * Or if these are already in .env.local:
- *   node -e "require('dotenv').config({path:'.env.local'})" -e "require('./register-commands.js')"
+ * Reads DISCORD_APP_ID and DISCORD_BOT_TOKEN from .env.local.
  */
+
+const { readFileSync } = require("fs");
+
+// Parse .env.local
+try {
+  const lines = readFileSync(".env.local", "utf8").split("\n");
+  for (const line of lines) {
+    const match = line.match(/^\s*([^#=]+?)\s*=\s*(.*)\s*$/);
+    if (match) process.env[match[1]] = match[2];
+  }
+} catch {
+  // .env.local not found — fall back to existing env vars
+}
 
 const APP_ID = process.env.DISCORD_APP_ID;
 const BOT_TOKEN = process.env.DISCORD_BOT_TOKEN;
