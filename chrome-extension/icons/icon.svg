@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="128" height="128" viewBox="0 0 128 128">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="128" y2="128" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#0a0b0f"/>
+      <stop offset="1" stop-color="#111318"/>
+    </linearGradient>
+    <linearGradient id="cyan" x1="20" y1="20" x2="108" y2="108" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#22d3ee"/>
+      <stop offset="1" stop-color="#06b6d4"/>
+    </linearGradient>
+    <linearGradient id="glow" x1="64" y1="30" x2="64" y2="100" gradientUnits="userSpaceOnUse">
+      <stop offset="0" stop-color="#22d3ee" stop-opacity="0.15"/>
+      <stop offset="1" stop-color="#06b6d4" stop-opacity="0"/>
+    </linearGradient>
+  </defs>
+  <!-- Rounded square background -->
+  <rect width="128" height="128" rx="28" fill="url(#bg)"/>
+  <rect x="1" y="1" width="126" height="126" rx="27" fill="none" stroke="url(#cyan)" stroke-opacity="0.25" stroke-width="1.5"/>
+  <!-- Subtle glow -->
+  <ellipse cx="64" cy="56" rx="44" ry="36" fill="url(#glow)"/>
+  <!-- Magnifying glass circle -->
+  <circle cx="56" cy="54" r="28" fill="none" stroke="url(#cyan)" stroke-width="4.5" stroke-opacity="0.9"/>
+  <!-- Glass handle -->
+  <line x1="76" y1="74" x2="98" y2="96" stroke="url(#cyan)" stroke-width="5.5" stroke-linecap="round" stroke-opacity="0.85"/>
+  <!-- Signal waveform inside the glass -->
+  <polyline points="34,58 42,48 50,56 58,40 66,52 74,46" fill="none" stroke="url(#cyan)" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- Signal dot at end -->
+  <circle cx="74" cy="46" r="3" fill="#22d3ee"/>
+  <!-- Subtle inner shadow on glass -->
+  <circle cx="56" cy="54" r="26" fill="none" stroke="#22d3ee" stroke-opacity="0.06" stroke-width="8"/>
+</svg>
