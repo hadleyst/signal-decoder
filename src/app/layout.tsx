@@ -16,6 +16,9 @@ const geistMono = Geist_Mono({
 export const metadata: Metadata = {
   title: "SignalDecoder",
   description: "Decode crypto signals and tweets into plain English",
+  other: {
+    coinzilla: "4085e8c97d1dbf56531a63512193a7c4",
+  },
 };
 
 export default function RootLayout({
