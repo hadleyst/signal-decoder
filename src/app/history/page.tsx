@@ -171,9 +171,9 @@ export default function SavedPage() {
                       {entry.coin_symbol && (
                         <>
                           <span className="w-1 h-1 rounded-full bg-gray-700" />
-                          <span className="font-bold text-cyan-400 bg-cyan-400/10 border border-cyan-400/20 rounded px-1.5 py-0.5">
+                          <Link href={`/coins/${entry.coin_symbol.toLowerCase()}`} className="font-bold text-cyan-400 bg-cyan-400/10 border border-cyan-400/20 rounded px-1.5 py-0.5 hover:bg-cyan-400/20 transition-colors">
                             {entry.coin_symbol}
-                          </span>
+                          </Link>
                         </>
                       )}
                     </div>

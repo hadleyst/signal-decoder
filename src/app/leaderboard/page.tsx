@@ -201,7 +201,7 @@ export default function LeaderboardPage() {
                           >
                             {i + 1}
                           </span>
-                          <span className="text-white font-bold">{coin.symbol}</span>
+                          <Link href={`/coins/${coin.symbol.toLowerCase()}`} className="text-white font-bold hover:text-cyan-400 transition-colors">{coin.symbol}</Link>
                           <span className="text-gray-500 text-sm">{coin.name}</span>
                         </div>
                         <span className="text-sm text-gray-400">

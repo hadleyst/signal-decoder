@@ -300,12 +300,13 @@ export default function FeedPage() {
                     {post.coins.length > 0 && (
                       <div className="flex flex-wrap gap-1.5 mb-3">
                         {post.coins.map((coin) => (
-                          <span
+                          <Link
                             key={coin.code}
-                            className="text-[10px] font-bold tracking-wide text-cyan-400 bg-cyan-400/10 border border-cyan-400/20 rounded px-2 py-0.5"
+                            href={`/coins/${coin.code.toLowerCase()}`}
+                            className="text-[10px] font-bold tracking-wide text-cyan-400 bg-cyan-400/10 border border-cyan-400/20 rounded px-2 py-0.5 hover:bg-cyan-400/20 transition-colors"
                           >
                             {coin.code}
-                          </span>
+                          </Link>
                         ))}
                       </div>
                     )}

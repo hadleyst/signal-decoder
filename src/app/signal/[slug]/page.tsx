@@ -135,9 +135,12 @@ export default async function SignalPage(
             Signal decoded
           </p>
           {signal.coin_symbol && (
-            <span className="inline-block text-xs font-bold tracking-wide text-cyan-400 bg-cyan-400/10 border border-cyan-400/20 rounded px-2 py-0.5 mb-3">
+            <Link
+              href={`/coins/${signal.coin_symbol.toLowerCase()}`}
+              className="inline-block text-xs font-bold tracking-wide text-cyan-400 bg-cyan-400/10 border border-cyan-400/20 rounded px-2 py-0.5 mb-3 hover:bg-cyan-400/20 transition-colors"
+            >
               {signal.coin_symbol}
-            </span>
+            </Link>
           )}
           <p className="text-xs text-gray-500">{date}</p>
         </header>
