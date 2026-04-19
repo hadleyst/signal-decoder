@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useAuth } from "@/components/AuthProvider";
+import { shareSignal } from "@/lib/shareImage";
 
 interface CoinTag {
   code: string;
@@ -77,6 +78,25 @@ export default function FeedPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [sharingId, setSharingId] = useState<string | null>(null);
+
+  async function handleShare(post: FeedPost) {
+    setSharingId(post.id);
+    try {
+      await shareSignal(
+        {
+          explanation: post.explanation,
+          sentiment: post.sentiment,
+          riskLevel: post.riskLevel,
+          timeframe: post.timeframe,
+          glossary: post.glossary,
+        },
+        post.coins[0]?.code,
+      );
+    } finally {
+      setSharingId(null);
+    }
+  }
 
   function fetchFeed(isRefresh = false) {
     if (isRefresh) setRefreshing(true);
@@ -258,9 +278,35 @@ export default function FeedPage() {
                     )}
 
                     {/* Explanation (always visible) */}
-                    <p className="text-sm text-gray-300 leading-relaxed mb-2">
+                    <p className="text-sm text-gray-300 leading-relaxed mb-3">
                       {post.explanation}
                     </p>
+
+                    {/* Action row: share + glossary */}
+                    <div className="flex items-center gap-3 mb-1">
+                      <button
+                        onClick={() => handleShare(post)}
+                        disabled={sharingId === post.id}
+                        className="inline-flex items-center gap-1.5 text-xs font-medium text-gray-400 hover:text-white transition-colors disabled:opacity-50"
+                      >
+                        {sharingId === post.id ? (
+                          <>
+                            <svg className="animate-spin h-3.5 w-3.5" viewBox="0 0 24 24" fill="none">
+                              <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" />
+                              <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4z" />
+                            </svg>
+                            Sharing...
+                          </>
+                        ) : (
+                          <>
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M7.217 10.907a2.25 2.25 0 1 0 0 2.186m0-2.186c.18.324.283.696.283 1.093s-.103.77-.283 1.093m0-2.186 9.566-5.314m-9.566 7.5 9.566 5.314m0 0a2.25 2.25 0 1 0 3.935 2.186 2.25 2.25 0 0 0-3.935-2.186Zm0-12.814a2.25 2.25 0 1 0 3.933-2.185 2.25 2.25 0 0 0-3.933 2.185Z" />
+                            </svg>
+                            Share on X
+                          </>
+                        )}
+                      </button>
+                    </div>
 
                     {/* Expand for glossary */}
                     {post.glossary.length > 0 && !expanded && (

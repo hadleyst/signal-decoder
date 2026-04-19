@@ -349,3 +349,32 @@ export function downloadBlob(blob: Blob, filename: string) {
   document.body.removeChild(a);
   URL.revokeObjectURL(url);
 }
+
+/**
+ * Generate share image, then either use Web Share API (mobile) or
+ * download the image + open a Twitter/X compose dialog (desktop).
+ */
+export async function shareSignal(result: DecodeResult, coinSymbol?: string) {
+  const blob = await generateShareImage(result);
+  const file = new File([blob], "signaldecoder.png", { type: "image/png" });
+
+  const coinText = coinSymbol ? ` $${coinSymbol}` : "";
+  const tweetText = `Just decoded this${coinText} signal on SignalDecoder \uD83D\uDD0D\n\nsignaldecoder.app`;
+
+  // Try Web Share API (works on mobile, some desktop browsers with file support)
+  if (typeof navigator !== "undefined" && navigator.share) {
+    try {
+      if (navigator.canShare?.({ files: [file] })) {
+        await navigator.share({ text: tweetText, files: [file] });
+        return;
+      }
+    } catch {
+      // User cancelled or API unavailable — fall through to Twitter intent
+    }
+  }
+
+  // Fallback: download image + open Twitter/X intent
+  downloadBlob(blob, `signaldecoder-${Date.now()}.png`);
+  const twitterUrl = `https://x.com/intent/tweet?text=${encodeURIComponent(tweetText)}`;
+  window.open(twitterUrl, "_blank", "width=550,height=450");
+}
