@@ -60,23 +60,14 @@ export default function LandingPage() {
           Paste any crypto trading signal, tweet, or TA post and get a plain English breakdown
           with sentiment analysis, risk assessment, and a jargon glossary.
         </p>
-        <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+        <div className="flex items-center justify-center">
           <Link
             href="/app"
             className="rounded-xl bg-gradient-to-r from-cyan-600 to-cyan-500 px-8 py-3.5 text-sm font-semibold text-white hover:from-cyan-500 hover:to-cyan-400 transition-all duration-200 shadow-lg shadow-cyan-500/20 hover:shadow-cyan-500/30 active:scale-[0.98]"
           >
-            Try it free
+            Start Decoding Free
           </Link>
-          <a
-            href="#pricing"
-            className="rounded-xl border border-white/10 px-8 py-3.5 text-sm font-medium text-gray-300 hover:bg-white/5 transition-colors"
-          >
-            View pricing
-          </a>
         </div>
-        <p className="mt-4 text-xs text-gray-500/75">
-          No wallet connection. No account needed. Start free.
-        </p>
       </section>
 
       {/* Demo */}
