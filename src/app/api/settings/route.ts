@@ -38,12 +38,13 @@ export async function GET(req: NextRequest) {
 
   const { data } = await supabase
     .from("user_settings")
-    .select("share_publicly")
+    .select("share_publicly, weekly_digest")
     .eq("user_id", user.id)
     .single();
 
   return NextResponse.json({
     sharePublicly: data?.share_publicly ?? false,
+    weeklyDigest: data?.weekly_digest ?? true,
   });
 }
 
@@ -54,18 +55,22 @@ export async function PATCH(req: NextRequest) {
 
   const body = await req.json().catch(() => ({}));
   const sharePublicly = typeof body?.sharePublicly === "boolean" ? body.sharePublicly : null;
+  const weeklyDigest = typeof body?.weeklyDigest === "boolean" ? body.weeklyDigest : null;
 
-  if (sharePublicly === null) {
+  if (sharePublicly === null && weeklyDigest === null) {
     return NextResponse.json({ error: "Invalid payload" }, { status: 400 });
   }
 
-  // Upsert user setting
+  // Build upsert payload with only the fields being changed
+  const upsertPayload: Record<string, unknown> = {
+    user_id: user.id,
+    updated_at: new Date().toISOString(),
+  };
+  if (sharePublicly !== null) upsertPayload.share_publicly = sharePublicly;
+  if (weeklyDigest !== null) upsertPayload.weekly_digest = weeklyDigest;
+
   const { error: upsertError } = await supabase.from("user_settings").upsert(
-    {
-      user_id: user.id,
-      share_publicly: sharePublicly,
-      updated_at: new Date().toISOString(),
-    },
+    upsertPayload,
     { onConflict: "user_id" }
   );
 
@@ -74,17 +79,18 @@ export async function PATCH(req: NextRequest) {
     return NextResponse.json({ error: "Failed to save settings" }, { status: 500 });
   }
 
-  // Sync existing decode_history rows to match the new setting
-  const { error: syncError } = await supabase
-    .from("decode_history")
-    .update({ is_public: sharePublicly })
-    .eq("user_id", user.id);
+  // Sync existing decode_history rows when share preference changes
+  if (sharePublicly !== null) {
+    const { error: syncError } = await supabase
+      .from("decode_history")
+      .update({ is_public: sharePublicly })
+      .eq("user_id", user.id);
 
-  if (syncError) {
-    console.error("History sync failed:", syncError);
-    // Setting was saved; existing rows just didn't update. Report partial success.
-    return NextResponse.json({ ok: true, syncedHistory: false });
+    if (syncError) {
+      console.error("History sync failed:", syncError);
+      return NextResponse.json({ ok: true, syncedHistory: false });
+    }
   }
 
-  return NextResponse.json({ ok: true, syncedHistory: true });
+  return NextResponse.json({ ok: true });
 }

@@ -29,6 +29,7 @@ function Logo() {
 export default function SettingsPage() {
   const { session, isSubscribed, loading: authLoading } = useAuth();
   const [sharePublicly, setSharePublicly] = useState(false);
+  const [weeklyDigest, setWeeklyDigest] = useState(true);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
@@ -43,6 +44,7 @@ export default function SettingsPage() {
       if (!res.ok) { setLoading(false); return; }
       const data = await res.json();
       setSharePublicly(!!data.sharePublicly);
+      setWeeklyDigest(data.weeklyDigest ?? true);
     } catch (e) {
       setError(e instanceof Error ? e.message : "Failed to load settings");
     } finally {
@@ -54,13 +56,13 @@ export default function SettingsPage() {
     if (!authLoading) fetchSettings();
   }, [authLoading, fetchSettings]);
 
-  async function toggleShare(next: boolean) {
+  async function saveSetting(key: string, value: boolean, setter: (v: boolean) => void) {
     if (!session) return;
     setSaving(true);
     setError("");
     setSaved(false);
-    // Optimistic update
-    setSharePublicly(next);
+    const prev = key === "sharePublicly" ? sharePublicly : weeklyDigest;
+    setter(value);
 
     try {
       const res = await fetch("/api/settings", {
@@ -69,10 +71,10 @@ export default function SettingsPage() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${session.access_token}`,
         },
-        body: JSON.stringify({ sharePublicly: next }),
+        body: JSON.stringify({ [key]: value }),
       });
       if (!res.ok) {
-        setSharePublicly(!next); // rollback
+        setter(prev);
         throw new Error("Failed to save");
       }
       setSaved(true);
@@ -149,7 +151,7 @@ export default function SettingsPage() {
                   </p>
                 </div>
                 <button
-                  onClick={() => !saving && toggleShare(!sharePublicly)}
+                  onClick={() => !saving && saveSetting("sharePublicly", !sharePublicly, setSharePublicly)}
                   disabled={saving}
                   role="switch"
                   aria-checked={sharePublicly}
@@ -176,7 +178,7 @@ export default function SettingsPage() {
               )}
             </section>
 
-            <div className="rounded-xl border border-white/5 p-4 bg-white/[0.02]">
+            <div className="rounded-xl border border-white/5 p-4 bg-white/[0.02] mb-6">
               <p className="text-xs text-gray-500 leading-relaxed">
                 <strong className="text-gray-400">What gets shared:</strong> the original signal text
                 (truncated), the plain English explanation, sentiment, risk, timeframe, and glossary.{" "}
@@ -184,6 +186,37 @@ export default function SettingsPage() {
                 uploaded images, and any identifying info.
               </p>
             </div>
+
+            <section className="card p-5">
+              <div className="flex items-start justify-between gap-4">
+                <div className="flex-1">
+                  <h2 className="text-sm font-semibold text-white mb-1">
+                    Weekly email digest
+                  </h2>
+                  <p className="text-xs text-gray-400 leading-relaxed">
+                    Receive a weekly email every Monday with the top decoded signals
+                    from the past week — sentiment, risk, and plain English breakdowns.
+                  </p>
+                </div>
+                <button
+                  onClick={() => !saving && saveSetting("weeklyDigest", !weeklyDigest, setWeeklyDigest)}
+                  disabled={saving}
+                  role="switch"
+                  aria-checked={weeklyDigest}
+                  className={`relative shrink-0 w-11 h-6 rounded-full border transition-colors ${
+                    weeklyDigest
+                      ? "bg-cyan-500 border-cyan-400"
+                      : "bg-white/5 border-white/10"
+                  } disabled:opacity-50 disabled:cursor-wait`}
+                >
+                  <span
+                    className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
+                      weeklyDigest ? "translate-x-[22px]" : "translate-x-0.5"
+                    }`}
+                  />
+                </button>
+              </div>
+            </section>
           </>
         )}
       </main>
