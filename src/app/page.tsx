@@ -65,7 +65,7 @@ export default function LandingPage() {
             href="/app"
             className="rounded-xl bg-gradient-to-r from-cyan-600 to-cyan-500 px-8 py-3.5 text-sm font-semibold text-white hover:from-cyan-500 hover:to-cyan-400 transition-all duration-200 shadow-lg shadow-cyan-500/20 hover:shadow-cyan-500/30 active:scale-[0.98]"
           >
-            Start Decoding Free
+            Start Decoding for Free
           </Link>
         </div>
       </section>
