@@ -13,12 +13,14 @@ const systemPrompt = `You are a crypto signal decoder. The user will give you a 
 
 Return ONLY valid JSON, no markdown fences or extra text.`;
 
-interface CryptoPanicPost {
+interface CoinGeckoNewsItem {
   title: string;
-  published_at: string;
+  description: string;
   url: string;
-  source: { title: string; region: string };
-  currencies?: Array<{ code: string; title: string }>;
+  thumb_2x: string;
+  created_at: number; // unix timestamp
+  author: string;
+  news_site: string;
 }
 
 interface DecodedPost {
@@ -55,38 +57,43 @@ async function decodeHeadline(text: string): Promise<{
 
 export async function GET() {
   try {
-    // Fetch trending crypto posts from CryptoPanic
-    const cpRes = await fetch(
-      "https://cryptopanic.com/api/v1/posts/?auth_token=free&kind=news&filter=hot",
-      { cache: "no-store" }
-    );
+    // Fetch trending crypto news from CoinGecko
+    const cgUrl = "https://api.coingecko.com/api/v3/news";
+    const headers: Record<string, string> = { Accept: "application/json" };
+    if (process.env.COINGECKO_API_KEY) {
+      headers["x-cg-demo-api-key"] = process.env.COINGECKO_API_KEY;
+    }
 
-    if (!cpRes.ok) {
-      console.error("CryptoPanic API error:", cpRes.status, await cpRes.text().catch(() => ""));
+    const cgRes = await fetch(cgUrl, { cache: "no-store", headers });
+
+    if (!cgRes.ok) {
+      console.error("CoinGecko news API error:", cgRes.status, await cgRes.text().catch(() => ""));
       return NextResponse.json(
         { error: "Failed to fetch crypto news. The news API may be temporarily unavailable." },
         { status: 502 }
       );
     }
 
-    const cpData = await cpRes.json();
-    const posts: CryptoPanicPost[] = (cpData.results || []).slice(0, 10);
+    const cgData = await cgRes.json();
+    const articles: CoinGeckoNewsItem[] = (cgData.data || cgData || []).slice(0, 10);
 
-    if (posts.length === 0) {
+    if (articles.length === 0) {
       return NextResponse.json({ feed: [] });
     }
 
-    // Decode each post via Claude (parallel)
+    // Decode each article via Claude (parallel)
     const results = await Promise.allSettled(
-      posts.map(async (post): Promise<DecodedPost> => {
-        const decoded = await decodeHeadline(post.title);
+      articles.map(async (article): Promise<DecodedPost> => {
+        const decoded = await decodeHeadline(article.title);
         return {
-          id: post.url || post.title,
-          signal_text: post.title,
-          source: post.source?.title || "Unknown",
-          published_at: post.published_at,
-          url: post.url,
-          coins: post.currencies || [],
+          id: article.url || article.title,
+          signal_text: article.title,
+          source: article.news_site || article.author || "Unknown",
+          published_at: typeof article.created_at === "number"
+            ? new Date(article.created_at * 1000).toISOString()
+            : String(article.created_at),
+          url: article.url,
+          coins: [],
           explanation: decoded.explanation,
           sentiment: decoded.sentiment as DecodedPost["sentiment"],
           riskLevel: decoded.riskLevel as DecodedPost["riskLevel"],
