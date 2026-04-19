@@ -162,8 +162,8 @@ export default function SettingsPage() {
                   } disabled:opacity-50 disabled:cursor-wait`}
                 >
                   <span
-                    className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
-                      sharePublicly ? "translate-x-[22px]" : "translate-x-0.5"
+                    className={`absolute top-[3px] left-[3px] w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${
+                      sharePublicly ? "translate-x-[20px]" : "translate-x-0"
                     }`}
                   />
                 </button>
@@ -210,8 +210,8 @@ export default function SettingsPage() {
                   } disabled:opacity-50 disabled:cursor-wait`}
                 >
                   <span
-                    className={`absolute top-0.5 w-4 h-4 rounded-full bg-white transition-transform ${
-                      weeklyDigest ? "translate-x-[22px]" : "translate-x-0.5"
+                    className={`absolute top-[3px] left-[3px] w-4 h-4 rounded-full bg-white shadow-sm transition-transform ${
+                      weeklyDigest ? "translate-x-[20px]" : "translate-x-0"
                     }`}
                   />
                 </button>
