@@ -3,7 +3,7 @@ import { NextResponse } from "next/server";
 
 const client = new Anthropic();
 
-const systemPrompt = `You are a crypto signal decoder. The user will give you a crypto news headline or signal. Analyze it and return a JSON response with these fields:
+const systemPrompt = `You are a crypto signal decoder. The user will give you a crypto coin trending signal with price data. Analyze it and return a JSON response with these fields:
 
 - "explanation": A plain English explanation of what this means for traders, written for someone who is not a crypto expert. 2-3 sentences.
 - "sentiment": One of "Bullish", "Bearish", or "Neutral".
@@ -12,16 +12,6 @@ const systemPrompt = `You are a crypto signal decoder. The user will give you a 
 - "glossary": An array of objects with "term" and "definition" for any crypto jargon. Keep it to 2-3 terms max.
 
 Return ONLY valid JSON, no markdown fences or extra text.`;
-
-interface CoinGeckoNewsItem {
-  title: string;
-  description: string;
-  url: string;
-  thumb_2x: string;
-  created_at: number; // unix timestamp
-  author: string;
-  news_site: string;
-}
 
 interface DecodedPost {
   id: string;
@@ -55,10 +45,21 @@ async function decodeHeadline(text: string): Promise<{
   return JSON.parse(raw);
 }
 
+function formatPrice(price: number): string {
+  if (price >= 1) return `$${price.toFixed(2)}`;
+  if (price >= 0.01) return `$${price.toFixed(4)}`;
+  return `$${price.toPrecision(3)}`;
+}
+
+function formatPct(pct: number): string {
+  const sign = pct >= 0 ? "+" : "";
+  return `${sign}${pct.toFixed(1)}%`;
+}
+
 export async function GET() {
   try {
-    // Fetch trending crypto news from CoinGecko
-    const cgUrl = "https://api.coingecko.com/api/v3/news";
+    // Fetch trending coins from CoinGecko (free, no key required)
+    const cgUrl = "https://api.coingecko.com/api/v3/search/trending";
     const headers: Record<string, string> = { Accept: "application/json" };
     if (process.env.COINGECKO_API_KEY) {
       headers["x-cg-demo-api-key"] = process.env.COINGECKO_API_KEY;
@@ -67,33 +68,59 @@ export async function GET() {
     const cgRes = await fetch(cgUrl, { cache: "no-store", headers });
 
     if (!cgRes.ok) {
-      console.error("CoinGecko news API error:", cgRes.status, await cgRes.text().catch(() => ""));
+      const body = await cgRes.text().catch(() => "");
+      console.error(`CoinGecko trending API error: ${cgRes.status} ${cgRes.statusText}`, body);
       return NextResponse.json(
-        { error: "Failed to fetch crypto news. The news API may be temporarily unavailable." },
+        { error: `Failed to fetch trending coins (HTTP ${cgRes.status}). Try again shortly.` },
         { status: 502 }
       );
     }
 
     const cgData = await cgRes.json();
-    const articles: CoinGeckoNewsItem[] = (cgData.data || cgData || []).slice(0, 10);
+    const coins = cgData.coins;
 
-    if (articles.length === 0) {
+    if (!Array.isArray(coins) || coins.length === 0) {
+      console.error("CoinGecko returned no coins. Response keys:", Object.keys(cgData));
       return NextResponse.json({ feed: [] });
     }
 
-    // Decode each article via Claude (parallel)
+    // Take top 10 trending coins
+    const items = coins.slice(0, 10);
+
+    // Build a signal string for each coin and decode via Claude
     const results = await Promise.allSettled(
-      articles.map(async (article): Promise<DecodedPost> => {
-        const decoded = await decodeHeadline(article.title);
+      items.map(async (entry: { item: Record<string, unknown> }): Promise<DecodedPost> => {
+        const coin = entry.item;
+        const data = (coin.data || {}) as Record<string, unknown>;
+        const priceChange = data.price_change_percentage_24h as Record<string, number> | undefined;
+        const pctUsd = priceChange?.usd;
+        const price = data.price as number | undefined;
+        const marketCap = data.market_cap as string | undefined;
+        const content = data.content as { description?: string } | null;
+
+        // Build a realistic signal string from the trending data
+        const parts = [
+          `$${coin.symbol} (${coin.name}) is trending on CoinGecko.`,
+        ];
+        if (price != null) parts.push(`Price: ${formatPrice(price)}.`);
+        if (pctUsd != null) parts.push(`24h change: ${formatPct(pctUsd)}.`);
+        if (marketCap) parts.push(`Market cap: ${marketCap}.`);
+        if (coin.market_cap_rank) parts.push(`Rank #${coin.market_cap_rank}.`);
+        if (content?.description) {
+          parts.push(content.description.slice(0, 200));
+        }
+
+        const signalText = parts.join(" ");
+
+        const decoded = await decodeHeadline(signalText);
+
         return {
-          id: article.url || article.title,
-          signal_text: article.title,
-          source: article.news_site || article.author || "Unknown",
-          published_at: typeof article.created_at === "number"
-            ? new Date(article.created_at * 1000).toISOString()
-            : String(article.created_at),
-          url: article.url,
-          coins: [],
+          id: `cg-${coin.id}`,
+          signal_text: signalText,
+          source: "CoinGecko Trending",
+          published_at: new Date().toISOString(),
+          url: `https://www.coingecko.com/en/coins/${coin.slug || coin.id}`,
+          coins: [{ code: String(coin.symbol), title: String(coin.name) }],
           explanation: decoded.explanation,
           sentiment: decoded.sentiment as DecodedPost["sentiment"],
           riskLevel: decoded.riskLevel as DecodedPost["riskLevel"],
@@ -103,13 +130,21 @@ export async function GET() {
       })
     );
 
+    // Log any decode failures
+    const failures = results.filter((r) => r.status === "rejected");
+    if (failures.length > 0) {
+      console.error(`${failures.length}/${results.length} decode(s) failed:`,
+        failures.map((f) => (f as PromiseRejectedResult).reason?.message || (f as PromiseRejectedResult).reason)
+      );
+    }
+
     const feed = results
       .filter((r): r is PromiseFulfilledResult<DecodedPost> => r.status === "fulfilled")
       .map((r) => r.value);
 
     return NextResponse.json({ feed });
   } catch (err) {
-    console.error("Feed API error:", err);
+    console.error("Feed API unexpected error:", err);
     return NextResponse.json(
       { error: "Failed to generate feed. Please try again." },
       { status: 500 }
