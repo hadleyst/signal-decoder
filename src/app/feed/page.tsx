@@ -72,13 +72,41 @@ function Logo() {
 const FREE_VISIBLE = 3;
 
 export default function FeedPage() {
-  const { isSubscribed, loading: authLoading } = useAuth();
+  const { session, isSubscribed, loading: authLoading } = useAuth();
   const [feed, setFeed] = useState<FeedPost[]>([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [sharingId, setSharingId] = useState<string | null>(null);
+  const [savedIds, setSavedIds] = useState<Set<string>>(new Set());
+  const [savingId, setSavingId] = useState<string | null>(null);
+
+  async function handleSave(post: FeedPost) {
+    if (!session || savedIds.has(post.id)) return;
+    setSavingId(post.id);
+    try {
+      const res = await fetch("/api/saved", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          slug: null,
+          signal_text: post.signal_text,
+          explanation: post.explanation,
+          sentiment: post.sentiment,
+          risk: post.riskLevel,
+          timeframe: post.timeframe,
+          coin_symbol: post.coins[0]?.code || null,
+        }),
+      });
+      if (res.ok) setSavedIds((prev) => new Set(prev).add(post.id));
+    } finally {
+      setSavingId(null);
+    }
+  }
 
   async function handleShare(post: FeedPost) {
     setSharingId(post.id);
@@ -282,8 +310,22 @@ export default function FeedPage() {
                       {post.explanation}
                     </p>
 
-                    {/* Action row: share + glossary */}
+                    {/* Action row: save + share + glossary */}
                     <div className="flex items-center gap-3 mb-1">
+                      {session && isSubscribed && (
+                        <button
+                          onClick={() => handleSave(post)}
+                          disabled={savingId === post.id || savedIds.has(post.id)}
+                          className={`inline-flex items-center gap-1.5 text-xs font-medium transition-colors disabled:opacity-70 ${
+                            savedIds.has(post.id) ? "text-cyan-400" : "text-gray-400 hover:text-white"
+                          }`}
+                        >
+                          <svg className="w-3.5 h-3.5" fill={savedIds.has(post.id) ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
+                            <path strokeLinecap="round" strokeLinejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0 1 11.186 0Z" />
+                          </svg>
+                          {savedIds.has(post.id) ? "Saved" : savingId === post.id ? "Saving..." : "Save"}
+                        </button>
+                      )}
                       <button
                         onClick={() => handleShare(post)}
                         disabled={sharingId === post.id}

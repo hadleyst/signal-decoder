@@ -118,6 +118,8 @@ export default function Home() {
   const [dragOver, setDragOver] = useState(false);
   const [shareLoading, setShareLoading] = useState(false);
   const [publicSlug, setPublicSlug] = useState<string | null>(null);
+  const [saved, setSaved] = useState(false);
+  const [saving, setSaving] = useState(false);
   const [watchedSymbols, setWatchedSymbols] = useState<Set<string>>(new Set());
   const [watchlistAddedCoin, setWatchlistAddedCoin] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -226,6 +228,32 @@ export default function Home() {
     }
   }
 
+  async function handleSave() {
+    if (!result || !session || saved) return;
+    setSaving(true);
+    try {
+      const res = await fetch("/api/saved", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify({
+          slug: publicSlug,
+          signal_text: signal.trim() || null,
+          explanation: result.explanation,
+          sentiment: result.sentiment,
+          risk: result.riskLevel,
+          timeframe: result.timeframe,
+          coin_symbol: result.coin?.symbol || null,
+        }),
+      });
+      if (res.ok) setSaved(true);
+    } finally {
+      setSaving(false);
+    }
+  }
+
   function clearImage() {
     setImageData(null);
     setImageMediaType(null);
@@ -257,6 +285,7 @@ export default function Home() {
     setShowPaywall(false);
     setWatchlistAddedCoin(null);
     setPublicSlug(null);
+    setSaved(false);
 
     try {
       const headers: Record<string, string> = {
@@ -334,7 +363,7 @@ export default function Home() {
                   href="/history"
                   className="text-xs text-gray-500 hover:text-gray-300 transition-colors"
                 >
-                  History
+                  Saved
                 </Link>
                 <Link
                   href="/settings"
@@ -688,7 +717,23 @@ export default function Home() {
                 </Link>
               )}
             </div>
-            <div className="flex justify-center pt-1">
+            <div className="flex justify-center gap-3 pt-1">
+              {isSubscribed && (
+                <button
+                  onClick={handleSave}
+                  disabled={saving || saved}
+                  className={`flex items-center gap-2 rounded-xl border px-5 py-2.5 text-sm font-medium transition-colors disabled:cursor-not-allowed ${
+                    saved
+                      ? "border-cyan-500/30 bg-cyan-500/10 text-cyan-400"
+                      : "border-white/10 bg-white/5 text-gray-300 hover:bg-white/10 hover:text-white"
+                  }`}
+                >
+                  <svg className="w-4 h-4" fill={saved ? "currentColor" : "none"} viewBox="0 0 24 24" stroke="currentColor" strokeWidth={1.5}>
+                    <path strokeLinecap="round" strokeLinejoin="round" d="M17.593 3.322c1.1.128 1.907 1.077 1.907 2.185V21L12 17.25 4.5 21V5.507c0-1.108.806-2.057 1.907-2.185a48.507 48.507 0 0 1 11.186 0Z" />
+                  </svg>
+                  {saving ? "Saving..." : saved ? "Saved" : "Save"}
+                </button>
+              )}
               <button
                 onClick={handleShare}
                 disabled={shareLoading}
