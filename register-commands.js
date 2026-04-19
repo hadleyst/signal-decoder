@@ -1,0 +1,53 @@
+/**
+ * Register the /decode slash command with Discord.
+ *
+ * Run once (or after changing commands):
+ *   DISCORD_APP_ID=xxx DISCORD_BOT_TOKEN=xxx node register-commands.js
+ *
+ * Or if these are already in .env.local:
+ *   node -e "require('dotenv').config({path:'.env.local'})" -e "require('./register-commands.js')"
+ */
+
+const APP_ID = process.env.DISCORD_APP_ID;
+const BOT_TOKEN = process.env.DISCORD_BOT_TOKEN;
+
+if (!APP_ID || !BOT_TOKEN) {
+  console.error("Set DISCORD_APP_ID and DISCORD_BOT_TOKEN env vars");
+  process.exit(1);
+}
+
+const command = {
+  name: "decode",
+  description: "Decode a crypto trading signal into plain English",
+  type: 1, // CHAT_INPUT
+  options: [
+    {
+      name: "signal",
+      description: "The crypto signal, tweet, or TA post to decode",
+      type: 3, // STRING
+      required: true,
+    },
+  ],
+};
+
+async function main() {
+  const url = `https://discord.com/api/v10/applications/${APP_ID}/commands`;
+  const res = await fetch(url, {
+    method: "POST",
+    headers: {
+      Authorization: `Bot ${BOT_TOKEN}`,
+      "Content-Type": "application/json",
+    },
+    body: JSON.stringify(command),
+  });
+
+  const body = await res.json();
+  if (res.ok) {
+    console.log("Command registered:", body.name, `(id: ${body.id})`);
+  } else {
+    console.error("Failed:", res.status, body);
+    process.exit(1);
+  }
+}
+
+main();
