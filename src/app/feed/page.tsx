@@ -263,9 +263,9 @@ export default function FeedPage() {
               return (
                 <div key={post.id}>
                   {showAd && (
-                    /* Coinzilla ad slot */
-                    <div className="ad-slot mb-3 rounded-xl border border-white/5 bg-white/[0.02] p-4 text-center min-h-[90px] flex items-center justify-center">
-                      <span className="text-[10px] text-gray-600 uppercase tracking-wider">Advertisement</span>
+                    /* BEGIN AADS AD UNIT 2435147 */
+                    <div id="frame" style={{width: "100%", margin: "auto", position: "relative", zIndex: 99998}}>
+                      <iframe data-aa="2435147" src="//acceptable.a-ads.com/2435147?size=Adaptive" style={{width: "100%", height: "auto", border: "none", overflow: "hidden"}} allow="autoplay"></iframe>
                     </div>
                   )}
                 <article className="card overflow-hidden animate-fade-up">
