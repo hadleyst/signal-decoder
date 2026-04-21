@@ -4,6 +4,7 @@ import { useState, useEffect } from "react";
 import Link from "next/link";
 import { useAuth } from "@/components/AuthProvider";
 import { shareSignal } from "@/lib/shareImage";
+import AadsAd from "@/components/AadsAd";
 
 interface CoinTag {
   code: string;
@@ -262,12 +263,7 @@ export default function FeedPage() {
 
               return (
                 <div key={post.id}>
-                  {showAd && (
-                    /* BEGIN AADS AD UNIT 2435147 */
-                    <div id="frame" style={{width: "100%", margin: "auto", position: "relative", zIndex: 99998}}>
-                      <iframe data-aa="2435147" src="//acceptable.a-ads.com/2435147?size=Adaptive" style={{width: "100%", height: "auto", border: "none", overflow: "hidden"}} allow="autoplay"></iframe>
-                    </div>
-                  )}
+                  {showAd && <AadsAd />}
                 <article className="card overflow-hidden animate-fade-up">
                   <div className="p-5">
                     {/* Meta row */}

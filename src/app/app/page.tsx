@@ -7,6 +7,7 @@ import AuthModal from "@/components/AuthModal";
 import Paywall from "@/components/Paywall";
 import { getUsageCount, incrementUsage, hasReachedLimit, resetUsage, FREE_LIMIT, EMAIL_GATE_AT, isEmailCaptured } from "@/lib/usage";
 import EmailGateModal from "@/components/EmailGateModal";
+import AadsAd from "@/components/AadsAd";
 import { shareSignal } from "@/lib/shareImage";
 
 interface GlossaryItem {
@@ -727,10 +728,7 @@ export default function Home() {
               </button>
             </div>
 
-            {/* BEGIN AADS AD UNIT 2435147 */}
-            <div id="frame" style={{width: "100%", margin: "auto", position: "relative", zIndex: 99998}}>
-              <iframe data-aa="2435147" src="//acceptable.a-ads.com/2435147?size=Adaptive" style={{width: "100%", height: "auto", border: "none", overflow: "hidden"}} allow="autoplay"></iframe>
-            </div>
+            <AadsAd />
           </div>
         )}
       </main>

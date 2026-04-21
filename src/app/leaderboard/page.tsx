@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
+import AadsAd from "@/components/AadsAd";
 
 interface CoinStat {
   symbol: string;
@@ -139,10 +140,7 @@ export default function LeaderboardPage() {
           </p>
         </header>
 
-        {/* BEGIN AADS AD UNIT 2435147 */}
-        <div id="frame" style={{width: "100%", margin: "auto", position: "relative", zIndex: 99998}}>
-          <iframe data-aa="2435147" src="//acceptable.a-ads.com/2435147?size=Adaptive" style={{width: "100%", height: "auto", border: "none", overflow: "hidden"}} allow="autoplay"></iframe>
-        </div>
+        <AadsAd />
 
         {loading && (
           <div className="flex justify-center py-20">

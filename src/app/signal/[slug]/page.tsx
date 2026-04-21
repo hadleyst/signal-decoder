@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import AadsAd from "@/components/AadsAd";
 import { notFound } from "next/navigation";
 import { createServiceClient } from "@/lib/supabase";
 
@@ -202,10 +203,7 @@ export default async function SignalPage(
           )}
         </article>
 
-        {/* BEGIN AADS AD UNIT 2435147 */}
-        <div id="frame" style={{width: "100%", margin: "auto", position: "relative", zIndex: 99998}}>
-          <iframe data-aa="2435147" src="//acceptable.a-ads.com/2435147?size=Adaptive" style={{width: "100%", height: "auto", border: "none", overflow: "hidden"}} allow="autoplay"></iframe>
-        </div>
+        <AadsAd />
 
         {/* CTA */}
         <div className="mt-6 card p-6 text-center">
